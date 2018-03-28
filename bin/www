@@ -11,13 +11,18 @@ const MongoClient = require('mongodb').MongoClient;
 const ObjectID = require('mongodb').ObjectID;
 
 // Connection URL
-const mongoUrl = 'mongodb://localhost:27017/tmcu';
+const mongoUrl = 'mongodb://localhost:27017';
+
+// Database Name
+const dbName = 'tmcu';
 
 // Use connect method to connect to the server
 MongoClient.connect(mongoUrl).catch((error) => {
   debug("Connect to mongodb " + momgoUrl + " was failed with error: ", error);
-}).then((db) => {
+}).then((client) => {
   debug("Connected mongoDB correctly to server");
+
+  const db = client.db(dbName);
 
   const app = require('../app')(db);
 

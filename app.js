@@ -4,6 +4,8 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const debug = require('debug')('tmcube:app');
+const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);
 
 module.exports = (db) => {
   const generalRouter = require('./routes/general')(db);
@@ -17,9 +19,22 @@ module.exports = (db) => {
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
 
-  app.use('/general', generalRouter);
-  app.use('/teacher', teacherRouter);
-  app.use('/student', studentRouter);
+  app.use(session({
+    secret: 'tmcu be',
+    store: new MongoStore({
+      url: 'mongodb://localhost:27017/tmcu',
+      ttl: 14 * 24 * 60 * 60 // = 14 days. Default
+    }),
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 60 * 60 * 1000
+    }
+  }));
+
+  app.use('/api/general', generalRouter);
+  app.use('/api/teacher', teacherRouter);
+  app.use('/api/student', studentRouter);
 
   // catch 404 and forward to error handler
   app.use(function(req, res, next) {
