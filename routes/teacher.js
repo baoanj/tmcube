@@ -3,8 +3,65 @@ const debug = require('debug')('tmcube:teacher');
 const router = express.Router();
 
 module.exports = (db) => {
-  router.get('/:id', function(req, res, next) {
-    res.send(req.params.id);
+  const teacherManager = require('../models/teacherModel')(db);
+
+  router.all('*', (req, res, next) => {
+		if (req.session.loginUser) {
+			next();
+		} else {
+			res.send({
+        stats: 0,
+        data: {
+          error: '未登录'
+        }
+      });
+		}
+	});
+
+  router.post('/addClass', (req, res, next) => {
+    const { classId, name, teacherName, password } = req.body;
+    teacherManager.insertClass(classId, name, teacherName, password).then(() => {
+      teacherManager.updateUserClassIds(req.session.loginUser._id, classId).then(() => {
+        req.session.loginUser.classIds.push(classId);
+        res.send({
+          stats: 1,
+          data: {}
+        });
+      }).catch((error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '创建失败'
+          }
+        });
+      });
+    }).catch((error) => {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '创建失败'
+        }
+      });
+    });
+  });
+
+  router.post('/checkClassIdUnique', (req, res, next) => {
+    const { classId } = req.body;
+    teacherManager.checkClassIdUnique(classId).then(() => {
+      res.send({
+        stats: 1,
+        data: {}
+      });
+    }).catch((error) => {
+      res.send({
+        stats: 0,
+        data: {
+          error: '此Id已存在'
+        }
+      });
+    });
   });
 
   return router;

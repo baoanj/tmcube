@@ -8,7 +8,6 @@ const debug = require('debug')('tmcube:server');
 const http = require('http');
 
 const MongoClient = require('mongodb').MongoClient;
-const ObjectID = require('mongodb').ObjectID;
 
 // Connection URL
 const mongoUrl = 'mongodb://localhost:27017';

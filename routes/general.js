@@ -92,7 +92,32 @@ module.exports = (db) => {
 	});
 
   router.get('/getClasses', (req, res, next) => {
-
+    const classIds = req.session.loginUser.classIds;
+    if (classIds.length === 0) {
+      res.send({
+        stats: 1,
+        data: {
+          classes: []
+        }
+      });
+    } else {
+      generalManager.findClasses(classIds).then((result) => {
+        res.send({
+          stats: 1,
+          data: {
+            classes: result
+          }
+        });
+      }, (error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '获取班级数据失败'
+          }
+        });
+      });
+    }
   });
 
   router.get('/profile', (req, res, next) => {
