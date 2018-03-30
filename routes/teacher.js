@@ -64,5 +64,26 @@ module.exports = (db) => {
     });
   });
 
+  router.post('/addHw/:classId', (req, res, next) => {
+    const classId = req.params.classId;
+    const { createDate, beginDate, endDate, title, description } = req.body;
+    teacherManager.updateClassHws(classId, createDate, beginDate, endDate, title, description)
+      .then(() => {
+        res.send({
+          stats: 1,
+          data: {}
+        });
+      })
+      .catch((error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '创建失败'
+          }
+        });
+      });
+  });
+
   return router;
 }

@@ -120,6 +120,36 @@ module.exports = (db) => {
     }
   });
 
+  router.get('/getHws/:classId', (req, res, next) => {
+    const classId = req.params.classId;
+    const classIds = req.session.loginUser.classIds;
+    if (!classIds.includes(classId)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '权限不足'
+        }
+      });
+    } else {
+      generalManager.findClass(classId).then((result) => {
+        res.send({
+          stats: 1,
+          data: {
+            class: result
+          }
+        });
+      }, (error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '获取数据失败'
+          }
+        });
+      });
+    }
+  });
+
   router.get('/profile', (req, res, next) => {
     res.send({
       stats: 1,

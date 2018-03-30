@@ -40,6 +40,26 @@ module.exports = (db) => {
           reject(error)
         });
       });
+    },
+
+    updateClassHws(classId, createDate, beginDate, endDate, title, description) {
+      return new Promise((resolve, reject) => {
+        collection.updateOne(
+          { classId },
+          { $push: { homeworks: {
+            createDate,
+            beginDate,
+            endDate,
+            title,
+            description,
+            submissions: []
+          } } }
+        ).then(() => {
+          resolve();
+        }).catch((error) => {
+          reject(error)
+        });
+      });
     }
   };
 };

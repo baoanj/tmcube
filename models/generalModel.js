@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const ObjectID = require('mongodb').ObjectID;
 
 const saltRounds = 2;
 
@@ -55,6 +56,53 @@ module.exports = (db) => {
             amountOfStus: item.userIds.length,
             anountOfHws: item.homeworks.length
           })));
+        }).catch((error) => {
+          reject(error);
+        });
+      });
+    },
+
+    findClass(classId) {
+      return new Promise((resolve, reject) => {
+        collection2.findOne({ classId }).then((doc) => {
+        	const homeworks = doc.homeworks.map((item) => {
+            return {
+              createDate: item.createDate,
+              beginDate: item.beginDate,
+              endDate: item.endDate,
+              title: item.title,
+              description: item.description,
+              amountOfSubs: item.submissions.length
+            };
+          });
+          if (doc.userIds.length) {
+            const userIds = doc.userIds.map((item) => ({ _id: ObjectID(item) }));
+            collection.find({ $or: userIds }).toArray().then((docs) => {
+            	const students = docs.map((item) => {
+                return {
+                  name: item.name,
+                  stuId: item.stuId,
+                  email: item.email,
+                  userId: item._id
+                }
+              });
+              resolve({
+                name: doc.name,
+                teacherName: doc.teacherName,
+                password: doc.password,
+                students,
+                homeworks
+              });
+            });
+          } else {
+            resolve({
+              name: doc.name,
+              teacherName: doc.teacherName,
+              password: doc.password,
+              students: [],
+              homeworks
+            });
+          }
         }).catch((error) => {
           reject(error);
         });
