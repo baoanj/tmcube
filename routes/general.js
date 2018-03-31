@@ -120,8 +120,8 @@ module.exports = (db) => {
     }
   });
 
-  router.get('/getHws/:classId', (req, res, next) => {
-    const classId = req.params.classId;
+  router.get('/getHws', (req, res, next) => {
+    const { classId } = req.query;
     const classIds = req.session.loginUser.classIds;
     if (!classIds.includes(classId)) {
       res.send({
@@ -136,6 +136,41 @@ module.exports = (db) => {
           stats: 1,
           data: {
             class: result
+          }
+        });
+      }, (error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '获取数据失败'
+          }
+        });
+      });
+    }
+  });
+
+  router.get('/getSubs', (req, res, next) => {
+    const { classId, createDate } = req.query;
+    const classIds = req.session.loginUser.classIds;
+    if (!classIds.includes(classId)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '权限不足'
+        }
+      });
+    } else {
+      generalManager.findHw(
+        classId,
+        createDate,
+        req.session.loginUser.role,
+        req.session.loginUser._id
+      ).then((result) => {
+        res.send({
+          stats: 1,
+          data: {
+            homework: result
           }
         });
       }, (error) => {

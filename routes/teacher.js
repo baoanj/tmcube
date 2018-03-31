@@ -85,5 +85,26 @@ module.exports = (db) => {
       });
   });
 
+  router.put('/feedbackHw/:classId/:createDate/:userId', (req, res, next) => {
+    const { classId, createDate, userId } = req.params;
+    const { feedback } = req.body;
+    teacherManager.updateSubFeedback(classId, +createDate, userId, feedback)
+      .then(() => {
+        res.send({
+          stats: 1,
+          data: {}
+        });
+      })
+      .catch((error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '提交失败'
+          }
+        });
+      });
+  });
+
   return router;
 }

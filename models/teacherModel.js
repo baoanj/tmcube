@@ -60,6 +60,23 @@ module.exports = (db) => {
           reject(error)
         });
       });
+    },
+
+    updateSubFeedback(classId, createDate, userId, feedback) {
+      return new Promise((resolve, reject) => {
+        collection.updateOne(
+          { classId },
+          { $set: {
+            'homeworks.$[hw].submissions.$[sub].feedback': feedback,
+            'homeworks.$[hw].submissions.$[sub].checked': true
+          } },
+          { arrayFilters: [ { 'hw.createDate': createDate }, { 'sub.userId': userId } ] }
+        ).then(() => {
+          resolve();
+        }).catch((error) => {
+          reject(error)
+        });
+      });
     }
   };
 };

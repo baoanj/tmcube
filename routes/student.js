@@ -59,5 +59,44 @@ module.exports = (db) => {
     });
   });
 
+  router.post('/submitHw/:classId/:createDate', (req, res, next) => {
+    const { classId, createDate } = req.params;
+    const { answer, file, date } = req.body;
+    const classIds = req.session.loginUser.classIds;
+    if (!classIds.includes(classId)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '权限不足'
+        }
+      });
+    } else {
+      studentManager.updateHwSubs(
+        req.session.loginUser._id,
+        req.session.loginUser.name,
+        req.session.loginUser.stuId,
+        req.session.loginUser.email,
+        classId,
+        +createDate,
+        answer,
+        file,
+        date
+      ).then(() => {
+        res.send({
+          stats: 1,
+          data: {}
+        });
+      }).catch((error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '提交失败'
+          }
+        });
+      });
+    }
+  });
+
   return router;
 }

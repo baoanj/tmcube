@@ -87,6 +87,7 @@ module.exports = (db) => {
                 }
               });
               resolve({
+                classId: doc.classId,
                 name: doc.name,
                 teacherName: doc.teacherName,
                 password: doc.password,
@@ -96,11 +97,35 @@ module.exports = (db) => {
             });
           } else {
             resolve({
+              classId: doc.classId,
               name: doc.name,
               teacherName: doc.teacherName,
               password: doc.password,
               students: [],
               homeworks
+            });
+          }
+        }).catch((error) => {
+          reject(error);
+        });
+      });
+    },
+
+    findHw(classId, createDate, role, userId) {
+      return new Promise((resolve, reject) => {
+        collection2.findOne({ classId }).then((doc) => {
+        	const homework = doc.homeworks.find((item) => item.createDate == createDate);
+          if (role === 'teacher') {
+            resolve(homework);
+          } else {
+            resolve({
+              createDate: homework.createDate,
+              beginDate: homework.beginDate,
+              endDate: homework.endDate,
+              title: homework.title,
+              description: homework.description,
+              submissions: homework.submissions.filter((item) =>
+                item.userId === userId)
             });
           }
         }).catch((error) => {

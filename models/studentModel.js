@@ -25,6 +25,37 @@ module.exports = (db) => {
           reject(error)
         });
       });
+    },
+
+    updateHwSubs(userId, stuName, stuId, email, classId, createDate, answer, file, date) {
+      return new Promise((resolve, reject) => {
+        collection.findOne({ classId }).then((doc) => {
+        	const homework = doc.homeworks.find((item) => item.createDate === createDate);
+          if (homework.beginDate <= date && homework.endDate >= date) {
+            collection.updateOne(
+              { classId },
+              { $push: { 'homeworks.$[hw].submissions': {
+                userId,
+                stuName,
+                stuId,
+                email,
+                date,
+                answer,
+                file,
+                checked: false,
+                feedback: ''
+              } } },
+              { arrayFilters: [{ 'hw.createDate': createDate }] }
+            ).then(() => {
+              resolve();
+            });
+          } else {
+            reject();
+          }
+        }).catch((error) => {
+          reject(error);
+        });
+      });
     }
   };
 };
