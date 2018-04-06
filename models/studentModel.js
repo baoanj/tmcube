@@ -27,7 +27,7 @@ module.exports = (db) => {
       });
     },
 
-    updateHwSubs(userId, stuName, stuId, email, classId, createDate, answer, file, date) {
+    updateHwSubs(userId, stuName, stuId, email, classId, createDate, answer, files, date) {
       return new Promise((resolve, reject) => {
         collection.findOne({ classId }).then((doc) => {
         	const homework = doc.homeworks.find((item) => item.createDate === createDate);
@@ -41,7 +41,7 @@ module.exports = (db) => {
                 email,
                 date,
                 answer,
-                file,
+                files,
                 checked: false,
                 feedback: ''
               } } },

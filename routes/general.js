@@ -216,5 +216,10 @@ module.exports = (db) => {
     });
   });
 
+  router.get('/download/:filename/:name', (req, res, next) => {
+    const { filename, name } = req.params;
+    res.download(`data/${filename}`, name);
+  });
+
   return router;
 }

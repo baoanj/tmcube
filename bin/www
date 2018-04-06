@@ -17,7 +17,7 @@ const dbName = 'tmcu';
 
 // Use connect method to connect to the server
 MongoClient.connect(mongoUrl).catch((error) => {
-  debug("Connect to mongodb " + momgoUrl + " was failed with error: ", error);
+  debug("Connect to mongodb " + mongoUrl + " was failed with error: ", error);
 }).then((client) => {
   debug("Connected mongoDB correctly to server");
 

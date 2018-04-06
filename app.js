@@ -1,6 +1,5 @@
 const createError = require('http-errors');
 const express = require('express');
-const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const debug = require('debug')('tmcube:app');
@@ -28,7 +27,7 @@ module.exports = (db) => {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 60 * 60 * 1000
+      maxAge: 24 * 60 * 60 * 1000
     }
   }));
 

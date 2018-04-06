@@ -71,7 +71,6 @@ module.exports = (db) => {
               beginDate: item.beginDate,
               endDate: item.endDate,
               title: item.title,
-              description: item.description,
               amountOfSubs: item.submissions.length
             };
           });
@@ -91,8 +90,10 @@ module.exports = (db) => {
                 name: doc.name,
                 teacherName: doc.teacherName,
                 password: doc.password,
+                message: doc.message,
                 students,
-                homeworks
+                homeworks,
+                coursewares: doc.coursewares
               });
             });
           } else {
@@ -101,8 +102,10 @@ module.exports = (db) => {
               name: doc.name,
               teacherName: doc.teacherName,
               password: doc.password,
+              message: doc.message,
               students: [],
-              homeworks
+              homeworks,
+              coursewares: doc.coursewares
             });
           }
         }).catch((error) => {
@@ -124,6 +127,8 @@ module.exports = (db) => {
               endDate: homework.endDate,
               title: homework.title,
               description: homework.description,
+              files: homework.files,
+              hwAnswer: homework.hwAnswer,
               submissions: homework.submissions.filter((item) =>
                 item.userId === userId)
             });

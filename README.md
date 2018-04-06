@@ -9,5 +9,5 @@
 npm install
 
 # serve with hot reload at localhost:4000
-SET DEBUG=tmcube:* & npm start
+npm start
 ```

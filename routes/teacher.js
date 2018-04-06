@@ -1,5 +1,7 @@
 const express = require('express');
 const debug = require('debug')('tmcube:teacher');
+const multer = require('multer');
+const upload = multer({ dest: 'data/' });
 const router = express.Router();
 
 module.exports = (db) => {
@@ -19,8 +21,8 @@ module.exports = (db) => {
 	});
 
   router.post('/addClass', (req, res, next) => {
-    const { classId, name, teacherName, password } = req.body;
-    teacherManager.insertClass(classId, name, teacherName, password).then(() => {
+    const { classId, name, teacherName, password, message } = req.body;
+    teacherManager.insertClass(classId, name, teacherName, password, message).then(() => {
       teacherManager.updateUserClassIds(req.session.loginUser._id, classId).then(() => {
         req.session.loginUser.classIds.push(classId);
         res.send({
@@ -64,10 +66,14 @@ module.exports = (db) => {
     });
   });
 
-  router.post('/addHw/:classId', (req, res, next) => {
+  router.post('/addHw/:classId', upload.array('files', 10), (req, res, next) => {
     const classId = req.params.classId;
     const { createDate, beginDate, endDate, title, description } = req.body;
-    teacherManager.updateClassHws(classId, createDate, beginDate, endDate, title, description)
+    const files = req.files.map((item) => ({
+      name: item.originalname,
+      filename: item.filename
+    }));
+    teacherManager.updateClassHws(classId, createDate, beginDate, endDate, title, description, files)
       .then(() => {
         res.send({
           stats: 1,
@@ -88,7 +94,7 @@ module.exports = (db) => {
   router.put('/feedbackHw/:classId/:createDate/:userId', (req, res, next) => {
     const { classId, createDate, userId } = req.params;
     const { feedback } = req.body;
-    teacherManager.updateSubFeedback(classId, +createDate, userId, feedback)
+    teacherManager.updateSubFeedback(classId, createDate, userId, feedback)
       .then(() => {
         res.send({
           stats: 1,
@@ -104,6 +110,85 @@ module.exports = (db) => {
           }
         });
       });
+  });
+
+  router.post('/uploadCourseware/:classId', upload.array('files', 10), (req, res, next) => {
+    const { classId } = req.params;
+    const { title, uploadDate } = req.body;
+    const files = req.files.map((item) => ({
+      name: item.originalname,
+      filename: item.filename
+    }));
+    teacherManager.uploadClassCourseware(classId, title, uploadDate, files)
+      .then(() => {
+        res.send({
+          stats: 1,
+          data: {}
+        });
+      })
+      .catch((error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '上传失败'
+          }
+        });
+      });
+  });
+
+  router.post('/uploadHwAnswer/:classId/:createDate',
+    upload.array('files', 10), (req, res, next) => {
+    try {
+      const { classId, createDate } = req.params;
+      const { answer, existFiles } = req.body;
+      const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
+        name: item.originalname,
+        filename: item.filename
+      })));
+      teacherManager.uploadHwAnswer(classId, createDate, answer, files)
+        .then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        })
+        .catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '上传失败'
+            }
+          });
+        });
+    } catch(error) {
+      debug(error);
+    }
+  });
+
+  router.put('/deleteHwAnswer/:classId/:createDate', (req, res, next) => {
+    try {
+      const { classId, createDate } = req.params;
+      teacherManager.deleteHwAnswer(classId, createDate)
+        .then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        })
+        .catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '上传失败'
+            }
+          });
+        });
+    } catch(error) {
+      debug(error);
+    }
   });
 
   return router;

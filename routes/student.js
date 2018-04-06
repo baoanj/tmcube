@@ -1,6 +1,8 @@
 const express = require('express');
 const debug = require('debug')('tmcube:student');
 const router = express.Router();
+const multer = require('multer');
+const upload = multer({ dest: 'data/' });
 
 module.exports = (db) => {
   const studentManager = require('../models/studentModel')(db);
@@ -59,9 +61,13 @@ module.exports = (db) => {
     });
   });
 
-  router.post('/submitHw/:classId/:createDate', (req, res, next) => {
+  router.post('/submitHw/:classId/:createDate', upload.array('files', 10), (req, res, next) => {
     const { classId, createDate } = req.params;
-    const { answer, file, date } = req.body;
+    const { answer, date } = req.body;
+    const files = req.files.map((item) => ({
+      name: item.originalname,
+      filename: item.filename
+    }));
     const classIds = req.session.loginUser.classIds;
     if (!classIds.includes(classId)) {
       res.send({
@@ -77,9 +83,9 @@ module.exports = (db) => {
         req.session.loginUser.stuId,
         req.session.loginUser.email,
         classId,
-        +createDate,
+        createDate,
         answer,
-        file,
+        files,
         date
       ).then(() => {
         res.send({
