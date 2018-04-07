@@ -15,5 +15,15 @@ module.exports = {
         reject(error);
       }
     });
+  },
+
+  getDeleteFiles(existFiles, newFiles) {
+    const deleteFiles = [];
+    for (let i = 0; i < existFiles.length; i++) {
+      if (!newFiles.find(item => item.filename === existFiles[i].filename)) {
+        deleteFiles.push(existFiles[i]);
+      }
+    }
+    return deleteFiles;
   }
 };

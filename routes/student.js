@@ -104,5 +104,93 @@ module.exports = (db) => {
     }
   });
 
+  router.put('/editHwSub/:classId/:createDate', upload.array('files', 10), (req, res, next) => {
+    try {
+      const { classId, createDate } = req.params;
+      const { answer, date, existFiles } = req.body;
+      const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
+        name: item.originalname,
+        filename: item.filename
+      })));
+      const classIds = req.session.loginUser.classIds;
+      if (!classIds.includes(classId)) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '权限不足'
+          }
+        });
+      } else {
+        studentManager.editHwSub(
+          req.session.loginUser._id,
+          classId,
+          createDate,
+          answer,
+          files,
+          date
+        ).then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        }).catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '修改失败'
+            }
+          });
+        });
+      }
+    } catch(error) {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '修改失败'
+        }
+      });
+    }
+  });
+
+  router.put('/deleteHwSub/:classId/:createDate', (req, res, next) => {
+    try {
+      const { classId, createDate } = req.params;
+      const classIds = req.session.loginUser.classIds;
+      if (!classIds.includes(classId)) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '权限不足'
+          }
+        });
+      } else {
+        studentManager.deleteHwSub(req.session.loginUser._id, classId, createDate).then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        }).catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '撤销失败'
+            }
+          });
+        });
+      }
+    } catch(error) {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '修改失败'
+        }
+      });
+    }
+  });
+
   return router;
 }

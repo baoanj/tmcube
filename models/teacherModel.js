@@ -1,4 +1,5 @@
 const ObjectID = require('mongodb').ObjectID;
+const debug = require('debug')('tmcube:teacher:model');
 const fileSystem = require('./fileSystem');
 
 module.exports = (db) => {
@@ -19,6 +20,20 @@ module.exports = (db) => {
           coursewares: []
         }).then((result) => {
           resolve(result)
+        }).catch((error) => {
+          debug(error);
+          reject(error);
+        });
+      });
+    },
+
+    updateClassMsg(classId, name, teacherName, password, message) {
+      return new Promise((resolve, reject) => {
+        collection.updateOne(
+          { classId },
+          { $set: { name, teacherName, password, message } }
+        ).then(() => {
+          resolve();
         }).catch((error) => {
           debug(error);
           reject(error);
@@ -78,6 +93,39 @@ module.exports = (db) => {
       });
     },
 
+    updateHomework(classId, createDate, beginDate, endDate, title, description, files) {
+      return new Promise((resolve, reject) => {
+        collection.findOne({ classId }).then((doc) => {
+          const homework = doc.homeworks.find(item => item.createDate === createDate);
+          const delFiles = fileSystem.getDeleteFiles(homework.files, files);
+          fileSystem.deleteFiles(delFiles).then(() => {
+            collection.updateOne(
+              { classId },
+              { $set: {
+                'homeworks.$[hw].beginDate': beginDate,
+                'homeworks.$[hw].endDate': endDate,
+                'homeworks.$[hw].title': title,
+                'homeworks.$[hw].description': description,
+                'homeworks.$[hw].files': files
+              } },
+              { arrayFilters: [ { 'hw.createDate': createDate } ] }
+            ).then(() => {
+              resolve();
+            }).catch((error) => {
+              debug(error);
+              reject(error);
+            });
+          }).catch((error) => {
+            debug(error);
+            reject(error);
+          });
+        }).catch((error) => {
+          debug(error);
+          reject(error);
+        });
+      });
+    },
+
     updateSubFeedback(classId, createDate, userId, feedback) {
       return new Promise((resolve, reject) => {
         collection.updateOne(
@@ -114,17 +162,86 @@ module.exports = (db) => {
       });
     },
 
+    updateCourseware(classId, title, uploadDate, files) {
+      return new Promise((resolve, reject) => {
+        collection.findOne({ classId }).then((doc) => {
+          const courseware = doc.coursewares.find(item => item.uploadDate === uploadDate);
+          const delFiles = fileSystem.getDeleteFiles(courseware.files, files);
+          fileSystem.deleteFiles(delFiles).then(() => {
+            collection.updateOne(
+              { classId },
+              { $set: {
+                'coursewares.$[cw].title': title,
+                'coursewares.$[cw].files': files
+              } },
+              { arrayFilters: [ { 'cw.uploadDate': uploadDate } ] }
+            ).then(() => {
+              resolve();
+            }).catch((error) => {
+              debug(error);
+              reject(error);
+            });
+          }).catch((error) => {
+            debug(error);
+            reject(error);
+          });
+        }).catch((error) => {
+          debug(error);
+          reject(error);
+        });
+      });
+    },
+
+    deleteCourseware(classId, uploadDate) {
+      // TODO: 尝试使用 async await
+      return new Promise((resolve, reject) => {
+        collection.findOne({ classId }).then((doc) => {
+          const courseware = doc.coursewares.find(item => item.uploadDate === uploadDate);
+          const files = courseware.files;
+          fileSystem.deleteFiles(files).then(() => {
+            collection.updateOne(
+              { classId },
+              { $pull: { coursewares: { uploadDate } } }
+            ).then(() => {
+              resolve();
+            }).catch((error) => {
+              debug(error);
+              reject(error);
+            });
+          }).catch((error) => {
+            debug(error);
+            reject(error);
+          });
+        }).catch((error) => {
+          debug(error);
+          reject(error);
+        });
+      });
+    },
+
     uploadHwAnswer(classId, createDate, answer, files) {
       return new Promise((resolve, reject) => {
-        collection.updateOne(
-          { classId },
-          { $set: { 'homeworks.$[hw].hwAnswer': {
-            answer,
-            files
-          } } },
-          { arrayFilters: [ { 'hw.createDate': createDate } ] }
-        ).then(() => {
-          resolve();
+        collection.findOne({ classId }).then((doc) => {
+          const homework = doc.homeworks.find(item => item.createDate === createDate);
+          const delFiles = fileSystem.getDeleteFiles(homework.hwAnswer.files, files);
+          fileSystem.deleteFiles(delFiles).then(() => {
+            collection.updateOne(
+              { classId },
+              { $set: { 'homeworks.$[hw].hwAnswer': {
+                answer,
+                files
+              } } },
+              { arrayFilters: [ { 'hw.createDate': createDate } ] }
+            ).then(() => {
+              resolve();
+            }).catch((error) => {
+              debug(error);
+              reject(error);
+            });
+          }).catch((error) => {
+            debug(error);
+            reject(error);
+          });
         }).catch((error) => {
           debug(error);
           reject(error);

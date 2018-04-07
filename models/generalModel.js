@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const debug = require('debug')('tmcube:general:model');
 const ObjectID = require('mongodb').ObjectID;
 
 const saltRounds = 2;

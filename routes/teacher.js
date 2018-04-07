@@ -49,6 +49,27 @@ module.exports = (db) => {
     });
   });
 
+  router.put('/editClass/:classId', (req, res, next) => {
+    const { classId } = req.params;
+    const { name, teacherName, password, message } = req.body;
+    teacherManager.updateClassMsg(classId, name, teacherName, password, message)
+      .then(() => {
+        res.send({
+          stats: 1,
+          data: {}
+        });
+      })
+      .catch((error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '修改失败'
+          }
+        });
+      });
+  });
+
   router.post('/checkClassIdUnique', (req, res, next) => {
     const { classId } = req.body;
     teacherManager.checkClassIdUnique(classId).then(() => {
@@ -91,6 +112,42 @@ module.exports = (db) => {
       });
   });
 
+  router.put('/editHw/:classId/:createDate',
+    upload.array('files', 10), (req, res, next) => {
+    try {
+      const { classId, createDate } = req.params;
+      const { beginDate, endDate, title, description, existFiles } = req.body;
+      const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
+        name: item.originalname,
+        filename: item.filename
+      })));
+      teacherManager.updateHomework(classId, createDate, beginDate, endDate, title, description, files)
+        .then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        })
+        .catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '修改失败'
+            }
+          });
+        });
+    } catch(error) {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '修改失败'
+        }
+      });
+    }
+  });
+
   router.put('/feedbackHw/:classId/:createDate/:userId', (req, res, next) => {
     const { classId, createDate, userId } = req.params;
     const { feedback } = req.body;
@@ -114,11 +171,11 @@ module.exports = (db) => {
 
   router.post('/uploadCourseware/:classId', upload.array('files', 10), (req, res, next) => {
     const { classId } = req.params;
-    const { title, uploadDate } = req.body;
-    const files = req.files.map((item) => ({
+    const { title, existFiles, uploadDate } = req.body;
+    const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
       name: item.originalname,
       filename: item.filename
-    }));
+    })));
     teacherManager.uploadClassCourseware(classId, title, uploadDate, files)
       .then(() => {
         res.send({
@@ -135,6 +192,72 @@ module.exports = (db) => {
           }
         });
       });
+  });
+
+  router.put('/updateCourseware/:classId/:uploadDate',
+    upload.array('files', 10), (req, res, next) => {
+    try {
+      const { classId, uploadDate } = req.params;
+      const { title, existFiles } = req.body;
+      const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
+        name: item.originalname,
+        filename: item.filename
+      })));
+      teacherManager.updateCourseware(classId, title, uploadDate, files)
+        .then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        })
+        .catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '上传失败'
+            }
+          });
+        });
+    } catch(error) {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '上传失败'
+        }
+      });
+    }
+  });
+
+  router.put('/deleteCourseware/:classId/:uploadDate', (req, res, next) => {
+    try {
+      const { classId, uploadDate } = req.params;
+      teacherManager.deleteCourseware(classId, uploadDate)
+        .then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        })
+        .catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '删除失败'
+            }
+          });
+        });
+    } catch(error) {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '删除失败'
+        }
+      });
+    }
   });
 
   router.post('/uploadHwAnswer/:classId/:createDate',
@@ -164,6 +287,12 @@ module.exports = (db) => {
         });
     } catch(error) {
       debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '上传失败'
+        }
+      });
     }
   });
 
@@ -182,12 +311,18 @@ module.exports = (db) => {
           res.send({
             stats: 0,
             data: {
-              error: '上传失败'
+              error: '删除失败'
             }
           });
         });
     } catch(error) {
       debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '删除失败'
+        }
+      });
     }
   });
 
