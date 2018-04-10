@@ -6,6 +6,7 @@ const router = express.Router();
 
 module.exports = (db) => {
   const teacherManager = require('../models/teacherModel')(db);
+  const generalManager = require('../models/generalModel')(db);
 
   router.all('*', (req, res, next) => {
 		if (req.session.loginUser) {
@@ -23,8 +24,9 @@ module.exports = (db) => {
   router.post('/addClass', (req, res, next) => {
     const { classId, name, teacherName, password, message } = req.body;
     teacherManager.insertClass(classId, name, teacherName, password, message).then(() => {
-      teacherManager.updateUserClassIds(req.session.loginUser._id, classId).then(() => {
-        req.session.loginUser.classIds.push(classId);
+      const classIds = ([classId]).concat(req.session.loginUser.classIds);
+      generalManager.updateUserClassIds(req.session.loginUser._id, classIds).then(() => {
+        req.session.loginUser.classIds = classIds;
         res.send({
           stats: 1,
           data: {}

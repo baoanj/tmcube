@@ -97,7 +97,8 @@ module.exports = (db) => {
       res.send({
         stats: 1,
         data: {
-          classes: []
+          classes: [],
+          classIds: []
         }
       });
     } else {
@@ -105,7 +106,8 @@ module.exports = (db) => {
         res.send({
           stats: 1,
           data: {
-            classes: result
+            classes: result,
+            classIds
           }
         });
       }, (error) => {
@@ -118,6 +120,25 @@ module.exports = (db) => {
         });
       });
     }
+  });
+
+  router.put('/moveClasses', (req, res, next) => {
+    const { classIds } = req.body;
+    generalManager.updateUserClassIds(req.session.loginUser._id, classIds).then(() => {
+      req.session.loginUser.classIds = classIds;
+      res.send({
+        stats: 1,
+        data: {}
+      });
+    }).catch((error) => {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '移动失败'
+        }
+      });
+    });
   });
 
   router.get('/getHws', (req, res, next) => {

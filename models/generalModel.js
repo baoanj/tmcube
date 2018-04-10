@@ -63,6 +63,20 @@ module.exports = (db) => {
       });
     },
 
+    updateUserClassIds(_id, classIds) {
+      return new Promise((resolve, reject) => {
+        collection.updateOne(
+          { _id: ObjectID(_id) },
+          { $set: { classIds } }
+        ).then(() => {
+          resolve();
+        }).catch((error) => {
+          debug(error);
+          reject(error);
+        });
+      });
+    },
+
     findClass(classId) {
       return new Promise((resolve, reject) => {
         collection2.findOne({ classId }).then((doc) => {

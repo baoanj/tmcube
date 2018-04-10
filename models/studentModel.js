@@ -1,4 +1,5 @@
 const debug = require('debug')('tmcube:student:model');
+const ObjectID = require('mongodb').ObjectID;
 const fileSystem = require('./fileSystem');
 
 module.exports = (db) => {
@@ -126,6 +127,19 @@ module.exports = (db) => {
           reject(error);
         });
       });
-    }
+    },
+
+    updateUserMsg(_id, name, stuId) {
+      return new Promise((resolve, reject) => {
+        collection2.updateOne(
+          { _id: ObjectID(_id) },
+          { $set: { name, stuId } }
+        ).then(() => {
+          resolve();
+        }).catch((error) => {
+          reject(error)
+        });
+      });
+    },
   };
 };

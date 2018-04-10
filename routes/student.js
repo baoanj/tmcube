@@ -6,7 +6,7 @@ const upload = multer({ dest: 'data/' });
 
 module.exports = (db) => {
   const studentManager = require('../models/studentModel')(db);
-  const teacherManager = require('../models/teacherModel')(db);
+  const generalManager = require('../models/generalModel')(db);
 
   router.all('*', (req, res, next) => {
 		if (req.session.loginUser) {
@@ -33,9 +33,10 @@ module.exports = (db) => {
       return;
     }
     studentManager.findClass(classId, password).then(() => {
-      teacherManager.updateUserClassIds(req.session.loginUser._id, classId).then(() => {
+      const classIds = ([classId]).concat(req.session.loginUser.classIds);
+      generalManager.updateUserClassIds(req.session.loginUser._id, classIds).then(() => {
         studentManager.updateClassUserIds(req.session.loginUser._id, classId).then(() => {
-          req.session.loginUser.classIds.push(classId);
+          req.session.loginUser.classIds = classIds;
           res.send({
             stats: 1,
             data: {}
@@ -190,6 +191,26 @@ module.exports = (db) => {
         }
       });
     }
+  });
+
+  router.put('/editUserMsg', (req, res, next) => {
+    const { name, stuId } = req.body;
+    studentManager.updateUserMsg(req.session.loginUser._id, name, stuId).then(() => {
+      req.session.loginUser.name = name;
+      req.session.loginUser.stuId = stuId;
+      res.send({
+        stats: 1,
+        data: {}
+      });
+    }).catch((error) => {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '修改失败'
+        }
+      });
+    });
   });
 
   return router;

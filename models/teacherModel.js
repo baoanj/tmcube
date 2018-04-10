@@ -53,20 +53,6 @@ module.exports = (db) => {
       });
     },
 
-    updateUserClassIds(_id, classId) {
-      return new Promise((resolve, reject) => {
-        collection2.updateOne(
-          { _id: ObjectID(_id) },
-          { $push: { classIds: classId } }
-        ).then(() => {
-          resolve();
-        }).catch((error) => {
-          debug(error);
-          reject(error);
-        });
-      });
-    },
-
     updateClassHws(classId, createDate, beginDate, endDate, title, description, files) {
       return new Promise((resolve, reject) => {
         collection.updateOne(
