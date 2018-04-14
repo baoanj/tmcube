@@ -1,8 +1,6 @@
-const bcrypt = require('bcrypt');
 const debug = require('debug')('tmcube:general:model');
 const ObjectID = require('mongodb').ObjectID;
-
-const saltRounds = 2;
+const passwordHash = require('./passwordHash');
 
 module.exports = (db) => {
   const collection = db.collection('users');
@@ -11,16 +9,15 @@ module.exports = (db) => {
   return {
     insertUser(name, stuId, email, password, role) {
       return new Promise((resolve, reject) => {
-        bcrypt.hash(password, saltRounds).then((hash) => {
-          collection.insert({
-            name,
-            stuId,
-            email,
-            password: hash,
-            role,
-            classIds: []
-          }).then((result) => resolve(result), (error) => reject(error));
-        }, () => reject());
+        const hash = passwordHash(password);
+        collection.insert({
+          name,
+          stuId,
+          email,
+          password: hash,
+          role,
+          classIds: []
+        }).then((result) => resolve(result), (error) => reject(error));
       });
     },
 
@@ -37,10 +34,9 @@ module.exports = (db) => {
     checkLogin(email, password) {
       return new Promise((resolve, reject) => {
         collection.findOne({ email }).then((doc) => {
-          bcrypt.compare(password, doc.password).then((res) => {
-            if (res) resolve(doc);
-            else reject('密码错误');
-          });
+          const hash = passwordHash(password);
+          if (hash === doc.password) resolve(doc);
+          else reject('密码错误');
         }).catch(() => { reject('登录失败'); });
       });
     },

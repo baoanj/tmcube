@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Module dependencies.
  */
@@ -23,7 +21,7 @@ MongoClient.connect(mongoUrl).catch((error) => {
 
   const db = client.db(dbName);
 
-  const app = require('../app')(db);
+  const app = require('./app')(db);
 
   /**
    * Get port from environment and store in Express.
