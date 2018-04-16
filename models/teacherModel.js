@@ -257,6 +257,41 @@ module.exports = (db) => {
           reject(error);
         });
       });
-    }
+    },
+
+    findStuSubs(classId, userId) {
+      return new Promise((resolve, reject) => {
+        collection.findOne({ classId }).then((doc) => {
+        	const result = [];
+          for (let i = 0; i < doc.homeworks.length; i++) {
+            let j;
+            for (j = 0; j < doc.homeworks[i].submissions.length; j++) {
+              if (doc.homeworks[i].submissions[j].userId === userId) {
+                result.push({
+                  commit: true,
+                  date: doc.homeworks[i].submissions[j].date,
+                  checked: doc.homeworks[i].submissions[j].checked,
+                  feedback: doc.homeworks[i].submissions[j].feedback,
+                  answer: doc.homeworks[i].submissions[j].answer,
+                  files: doc.homeworks[i].submissions[j].files,
+                  hwTitle: doc.homeworks[i].title
+                });
+                break;
+              }
+            }
+            if (j === doc.homeworks[i].submissions.length) {
+              result.push({
+                commit: false,
+                hwTitle: doc.homeworks[i].title
+              });
+            }
+          }
+          resolve(result);
+        }).catch((error) => {
+          debug(error);
+          reject(error);
+        });
+      });
+    },
   };
 };

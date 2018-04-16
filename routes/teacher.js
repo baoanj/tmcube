@@ -328,5 +328,38 @@ module.exports = (db) => {
     }
   });
 
+  router.get('/getStuSubs', (req, res, next) => {
+    const { classId, userId } = req.query;
+    const classIds = req.session.loginUser.classIds;
+    if (!classIds.includes(classId)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '权限不足'
+        }
+      });
+    } else {
+      teacherManager.findStuSubs(
+        classId,
+        userId
+      ).then((result) => {
+        res.send({
+          stats: 1,
+          data: {
+            subs: result
+          }
+        });
+      }, (error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '获取数据失败'
+          }
+        });
+      });
+    }
+  });
+
   return router;
 }

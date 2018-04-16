@@ -1,12 +1,25 @@
 const express = require('express');
 const debug = require('debug')('tmcube:general');
+const svgCaptcha = require('svg-captcha');
 const router = express.Router();
+
+svgCaptcha.options.height = 40;
 
 module.exports = (db) => {
   const generalManager = require('../models/generalModel')(db);
 
   router.post('/regist', (req, res, next) => {
-    const { name, stuId, email, password, role } = req.body;
+    const { name, stuId, email, password, role, captcha } = req.body;
+
+    if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '验证码错误'
+        },
+      });
+      return;
+    }
 
     generalManager.checkEmailExist(email).then(() => {
       generalManager.insertUser(name, stuId, email, password, role).then(() => {
@@ -49,7 +62,17 @@ module.exports = (db) => {
   });
 
   router.post('/login', (req, res, next) => {
-    const { email, password } = req.body;
+    const { email, password, captcha } = req.body;
+
+    if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '验证码错误'
+        },
+      });
+      return;
+    }
 
     generalManager.checkLogin(email, password).then((user) => {
       req.session.regenerate((err) => {
@@ -76,6 +99,33 @@ module.exports = (db) => {
         },
       });
     });
+  });
+
+  router.get('/getCaptcha', (req, res, next) => {
+    const captcha = svgCaptcha.create();
+    req.session.captcha = captcha.text;
+    res.send({
+      stats: 1,
+      data: {
+        captcha: captcha.data
+      }
+    });
+  });
+
+  router.post('/checkCaptcha', (req, res, next) => {
+    if (req.body.captcha.toUpperCase() === req.session.captcha.toUpperCase()) {
+      res.send({
+        stats: 1,
+        data: {}
+      });
+    } else {
+      res.send({
+        stats: 0,
+        data: {
+          error: '验证码错误'
+        }
+      });
+    }
   });
 
   router.all('*', (req, res, next) => {
