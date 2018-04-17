@@ -8,6 +8,9 @@
 # install dependencies
 npm install
 
+# mail config
+cp mail.config.example.js mail.config.js
+
 # serve with hot reload at localhost:4000
 npm start
 

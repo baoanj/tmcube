@@ -2,6 +2,7 @@ const express = require('express');
 const debug = require('debug')('tmcube:general');
 const svgCaptcha = require('svg-captcha');
 const router = express.Router();
+const sendEmail = require('../models/sendEmail');
 
 svgCaptcha.options.height = 40;
 
@@ -128,6 +129,159 @@ module.exports = (db) => {
     }
   });
 
+  router.post('/forgotPass', (req, res, next) => {
+    const { email, captcha, host } = req.body;
+
+    if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '验证码错误'
+        },
+      });
+      return;
+    }
+
+    generalManager.checkEmailExist(email).then(() => {
+      res.send({
+        stats: 0,
+        data: {
+          error: '邮箱未注册'
+        }
+      });
+    }, () => {
+      generalManager.addForgotPass(email).then((result) => {
+        sendEmail(
+          email,
+          '【重置密码】高校教学管理系统',
+          `请复制此链接(10分钟内有效)在浏览器窗口打开：${host}/reset/${result.ops[0]._id}`
+        ).then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        }).catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '邮件发送失败'
+            }
+          });
+        });
+      }).catch((error) => {
+        debug(error);
+        res.send({
+          stats: 0,
+          data: {
+            error: '服务器出毛病了'
+          }
+        });
+      });
+    });
+  });
+
+  router.post('/checkReset/:resetId', (req, res, next) => {
+    const { resetId } = req.params;
+
+    if (!/^[a-f0-9]{24}$/.test(resetId)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '无效链接'
+        }
+      });
+      return;
+    }
+
+    generalManager.findForgotPass(resetId).then((data) => {
+      if (!data) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '无效链接'
+          }
+        });
+      } else if (data.expiredDate < Date.now()) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '该链接已失效'
+          }
+        });
+      } else {
+        res.send({
+          stats: 1,
+          data: {}
+        });
+      }
+    }).catch((error) => {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '服务器出毛病了'
+        }
+      });
+    });
+  });
+
+  router.post('/resetPass/:resetId', (req, res, next) => {
+    const { password } = req.body;
+    const { resetId } = req.params;
+
+    if (!/^[a-f0-9]{24}$/.test(resetId)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '无效链接'
+        }
+      });
+      return;
+    }
+
+    generalManager.findForgotPass(resetId).then((data) => {
+      if (!data) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '无效链接'
+          }
+        });
+      } else if (data.expiredDate < Date.now()) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '该链接已失效'
+          }
+        });
+      } else {
+        generalManager.updateUserPassword(data.email, password).then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        }).catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '重置失败'
+            }
+          });
+        });
+      }
+    }).catch((error) => {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '服务器出毛病了'
+        }
+      });
+    });
+  });
+
   router.all('*', (req, res, next) => {
 		if (req.session.loginUser) {
 			next();
@@ -202,7 +356,7 @@ module.exports = (db) => {
         }
       });
     } else {
-      generalManager.findClass(classId).then((result) => {
+      generalManager.findClass(classId, req.session.loginUser).then((result) => {
         res.send({
           stats: 1,
           data: {

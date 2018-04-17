@@ -5,6 +5,7 @@ const passwordHash = require('./passwordHash');
 module.exports = (db) => {
   const collection = db.collection('users');
   const collection2 = db.collection('classes');
+  const collection3 = db.collection('forgots');
 
   return {
     insertUser(name, stuId, email, password, role) {
@@ -73,7 +74,7 @@ module.exports = (db) => {
       });
     },
 
-    findClass(classId) {
+    findClass(classId, user) {
       return new Promise((resolve, reject) => {
         collection2.findOne({ classId }).then((doc) => {
         	const homeworks = doc.homeworks.map((item) => {
@@ -88,14 +89,21 @@ module.exports = (db) => {
           if (doc.userIds.length) {
             const userIds = doc.userIds.map((item) => ({ _id: ObjectID(item) }));
             collection.find({ $or: userIds }).toArray().then((docs) => {
-            	const students = docs.map((item) => {
-                return {
-                  name: item.name,
-                  stuId: item.stuId,
-                  email: item.email,
-                  userId: item._id
-                }
-              });
+            	const students = user.role === 'student' ?
+                [{
+                  name: user.name,
+                  stuId: user.stuId,
+                  email: user.email,
+                  userId: user._id
+                }] :
+                docs.map((item) => {
+                  return {
+                    name: item.name,
+                    stuId: item.stuId,
+                    email: item.email,
+                    userId: item._id
+                  }
+                });
               resolve({
                 classId: doc.classId,
                 name: doc.name,
@@ -147,6 +155,34 @@ module.exports = (db) => {
         }).catch((error) => {
           reject(error);
         });
+      });
+    },
+
+    addForgotPass(email) {
+      return new Promise((resolve, reject) => {
+        collection3.insert({
+          email,
+          expiredDate: Date.now() + 10 * 60 * 1000
+        }).then((result) => resolve(result), (error) => reject(error));
+      });
+    },
+
+    findForgotPass(resetId) {
+      return new Promise((resolve, reject) => {
+        if (!/^[a-f0-9]{24}$/.test(resetId)) {
+          reject(new Error('Argument passed in must be a string of 24 hex characters'));
+        } else {
+          collection3.findOne({ _id: ObjectID(resetId) })
+            .then((doc) => resolve(doc), (error) => reject(error));
+        }
+      });
+    },
+
+    updateUserPassword(email, password) {
+      const hash = passwordHash(password);
+      return new Promise((resolve, reject) => {
+        collection.updateOne({ email }, { $set: { password: hash }})
+          .then(() => resolve(), (error) => reject(error));
       });
     }
   };
