@@ -2,6 +2,11 @@
  * Module dependencies.
  */
 
+// for webpack
+if (process.env.NODE_ENV === 'production') {
+  require('./assets/Comismsh.ttf');
+}
+
 const debug = require('debug')('tmcube:server');
 const http = require('http');
 

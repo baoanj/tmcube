@@ -1,10 +1,8 @@
 const express = require('express');
 const debug = require('debug')('tmcube:general');
-const svgCaptcha = require('svg-captcha');
+const svgCaptcha = require('../utils/svg-captcha');
 const router = express.Router();
-const sendEmail = require('../models/sendEmail');
-
-svgCaptcha.options.height = 40;
+const sendEmail = require('../utils/sendEmail');
 
 module.exports = (db) => {
   const generalManager = require('../models/generalModel')(db);

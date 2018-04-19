@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "webpack --config webpack.config.js",
-    "start": "SET DEBUG=tmcube:* & nodemon ./main.js"
+    "build": "SET NODE_ENV=production & webpack --config webpack.config.js",
+    "start": "SET NODE_ENV=development & SET DEBUG=tmcube:* & nodemon ./main.js"
   },
   "dependencies": {
     "connect-mongo": "^2.0.1",
@@ -17,10 +17,10 @@
     "morgan": "^1.9.0",
     "multer": "^1.3.0",
     "nodemailer": "^4.6.4",
-    "svg-captcha": "^1.3.11"
+    "opentype.js": "^0.8.0"
   },
   "devDependencies": {
-    "node-dev": "^3.1.3",
+    "file-loader": "^1.1.11",
     "nodemon": "^1.17.3",
     "webpack": "^3.6.0"
   }
