@@ -1,9 +1,9 @@
 module.exports = {
-  host: 'smtp.126.com',
+  host: 'smtp.exmail.qq.com',
   port: 465,
   secure: true,
   auth: {
-    user: 'xxx@126.com',
+    user: 'xxxxxx@xxx.xxx',
     pass: 'xxxxxx'
   }
 };

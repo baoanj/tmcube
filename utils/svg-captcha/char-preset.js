@@ -1,3 +1,3 @@
 'use strict';
 
-module.exports = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+module.exports = 'ABCDEFGHJKMNPQRSTUVWXYabcdefghjkmnpqrstuvwxy23456789';

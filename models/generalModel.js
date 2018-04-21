@@ -6,6 +6,7 @@ module.exports = (db) => {
   const collection = db.collection('users');
   const collection2 = db.collection('classes');
   const collection3 = db.collection('forgots');
+  const collection4 = db.collection('validates');
 
   return {
     insertUser(name, stuId, email, password, role) {
@@ -17,7 +18,9 @@ module.exports = (db) => {
           email,
           password: hash,
           role,
-          classIds: []
+          classIds: [],
+          taClassIds: [],
+          validate: false
         }).then((result) => resolve(result), (error) => reject(error));
       });
     },
@@ -36,8 +39,9 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.findOne({ email }).then((doc) => {
           const hash = passwordHash(password);
-          if (hash === doc.password) resolve(doc);
-          else reject('密码错误');
+          if (!doc.validate) reject('邮箱未激活')
+          else if (hash !== doc.password) reject('密码错误');
+          else resolve(doc);
         }).catch(() => { reject('登录失败'); });
       });
     },
@@ -68,7 +72,19 @@ module.exports = (db) => {
         ).then(() => {
           resolve();
         }).catch((error) => {
-          debug(error);
+          reject(error);
+        });
+      });
+    },
+
+    updateUserActivation(email) {
+      return new Promise((resolve, reject) => {
+        collection.updateOne(
+          { email },
+          { $set: { validate: true } }
+        ).then(() => {
+          resolve();
+        }).catch((error) => {
           reject(error);
         });
       });
@@ -183,6 +199,44 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.updateOne({ email }, { $set: { password: hash }})
           .then(() => resolve(), (error) => reject(error));
+      });
+    },
+
+    addValidateEmail(email) {
+      return new Promise((resolve, reject) => {
+        collection4.insert({
+          email
+        }).then((result) => resolve(result), (error) => reject(error));
+      });
+    },
+
+    findValidateEmail(activateId) {
+      return new Promise((resolve, reject) => {
+        if (!/^[a-f0-9]{24}$/.test(activateId)) {
+          reject(new Error('Argument passed in must be a string of 24 hex characters'));
+        } else {
+          collection4.findOne({ _id: ObjectID(activateId) })
+            .then((doc) => {
+              if (!doc) reject()
+              else resolve(doc.email);
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        }
+      });
+    },
+
+    findValidateId(email) {
+      return new Promise((resolve, reject) => {
+        collection4.findOne({ email })
+        .then((doc) => {
+          if (!doc) reject()
+          else resolve(doc._id);
+        })
+        .catch((error) => {
+          reject(error);
+        });
       });
     }
   };

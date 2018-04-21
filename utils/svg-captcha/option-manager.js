@@ -13,7 +13,7 @@ const options = {
 	color: false,
 	background: '',
 	size: 4,
-	ignoreChars: 'ilozILOZ01',
+	ignoreChars: '',
 	fontSize: 42,
 	charPreset, font, ascender, descender
 };
