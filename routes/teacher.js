@@ -361,5 +361,36 @@ module.exports = (db) => {
     }
   });
 
+  router.put('/updateClassTas/:classId', (req, res, next) => {
+    try {
+      const { classId } = req.params;
+      const { tas } = req.body;
+      teacherManager.updateClassTas(classId, tas)
+        .then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        })
+        .catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '提交失败'
+            }
+          });
+        });
+    } catch(error) {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '服务器出错'
+        }
+      });
+    }
+  });
+
   return router;
 }

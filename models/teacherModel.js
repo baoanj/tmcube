@@ -293,5 +293,19 @@ module.exports = (db) => {
         });
       });
     },
+
+    updateClassTas(classId, tas) {
+      return new Promise((resolve, reject) => {
+        collection.updateOne(
+          { classId },
+          { $set: { tas } }
+        ).then(() => {
+          resolve();
+        }).catch((error) => {
+          debug(error);
+          reject(error);
+        });
+      });
+    }
   };
 };

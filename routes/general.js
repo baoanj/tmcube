@@ -480,8 +480,7 @@ module.exports = (db) => {
       generalManager.findHw(
         classId,
         createDate,
-        req.session.loginUser.role,
-        req.session.loginUser._id
+        req.session.loginUser
       ).then((result) => {
         res.send({
           stats: 1,
@@ -508,6 +507,7 @@ module.exports = (db) => {
         profile: {
           name: req.session.loginUser.name,
           stuId: req.session.loginUser.stuId,
+          email: req.session.loginUser.email,
           role: req.session.loginUser.role
         }
       }

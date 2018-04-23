@@ -56,7 +56,8 @@ module.exports = (db) => {
             teacherName: item.teacherName,
             password: item.password,
             amountOfStus: item.userIds.length,
-            anountOfHws: item.homeworks.length
+            anountOfHws: item.homeworks.length,
+            tas: item.tas
           })));
         }).catch((error) => {
           reject(error);
@@ -94,18 +95,35 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection2.findOne({ classId }).then((doc) => {
         	const homeworks = doc.homeworks.map((item) => {
+            let submit = false, checked = false;
+            for (let i = 0; i < item.submissions.length; i++) {
+              if (item.submissions[i].userId === user._id) {
+                submit = true;
+                checked = item.submissions[i].checked;
+                break;
+              }
+            }
             return {
               createDate: item.createDate,
               beginDate: item.beginDate,
               endDate: item.endDate,
               title: item.title,
-              amountOfSubs: item.submissions.length
+              amountOfSubs: item.submissions.length,
+              submit,
+              checked
             };
           });
+          let isTA = false;
+          for (let i = 0; i < doc.tas.length; i++) {
+            if (doc.tas[i].email === user.email) {
+              isTA = true;
+              break;
+            }
+          }
           if (doc.userIds.length) {
             const userIds = doc.userIds.map((item) => ({ _id: ObjectID(item) }));
             collection.find({ $or: userIds }).toArray().then((docs) => {
-            	const students = user.role === 'student' ?
+            	const students = (user.role === 'student' && !isTA) ?
                 [{
                   name: user.name,
                   stuId: user.stuId,
@@ -128,7 +146,8 @@ module.exports = (db) => {
                 message: doc.message,
                 students,
                 homeworks,
-                coursewares: doc.coursewares
+                coursewares: doc.coursewares,
+                tas: doc.tas
               });
             });
           } else {
@@ -140,7 +159,8 @@ module.exports = (db) => {
               message: doc.message,
               students: [],
               homeworks,
-              coursewares: doc.coursewares
+              coursewares: doc.coursewares,
+              tas: doc.tas
             });
           }
         }).catch((error) => {
@@ -149,11 +169,19 @@ module.exports = (db) => {
       });
     },
 
-    findHw(classId, createDate, role, userId) {
+    findHw(classId, createDate, user) {
       return new Promise((resolve, reject) => {
         collection2.findOne({ classId }).then((doc) => {
         	const homework = doc.homeworks.find((item) => item.createDate == createDate);
-          if (role === 'teacher') {
+          let isTA = false;
+          for (let i = 0; i < doc.tas.length; i++) {
+            if (doc.tas[i].email === user.email) {
+              isTA = true;
+              break;
+            }
+          }
+          if (user.role === 'teacher' || isTA) {
+            homework.tas = doc.tas;
             resolve(homework);
           } else {
             resolve({
@@ -165,7 +193,8 @@ module.exports = (db) => {
               files: homework.files,
               hwAnswer: homework.hwAnswer,
               submissions: homework.submissions.filter((item) =>
-                item.userId === userId)
+                item.userId === user._id),
+              tas: doc.tas
             });
           }
         }).catch((error) => {
