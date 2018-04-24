@@ -181,8 +181,17 @@ module.exports = (db) => {
             }
           }
           if (user.role === 'teacher' || isTA) {
-            homework.tas = doc.tas;
-            resolve(homework);
+            resolve({
+              createDate: homework.createDate,
+              beginDate: homework.beginDate,
+              endDate: homework.endDate,
+              title: homework.title,
+              description: homework.description,
+              files: homework.files,
+              hwAnswer: homework.hwAnswer,
+              submissions: homework.submissions,
+              tas: doc.tas
+            });
           } else {
             resolve({
               createDate: homework.createDate,
@@ -194,7 +203,8 @@ module.exports = (db) => {
               hwAnswer: homework.hwAnswer,
               submissions: homework.submissions.filter((item) =>
                 item.userId === user._id),
-              tas: doc.tas
+              tas: doc.tas,
+              draft: homework.drafts[user._id]
             });
           }
         }).catch((error) => {

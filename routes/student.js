@@ -213,5 +213,55 @@ module.exports = (db) => {
     });
   });
 
+  router.put('/updateHwDraft/:classId/:createDate', upload.array('files', 10),
+    (req, res, next) => {
+    try {
+      const { classId, createDate } = req.params;
+      const { answer, existFiles } = req.body;
+      const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
+        name: item.originalname,
+        filename: item.filename
+      })));
+      const classIds = req.session.loginUser.classIds;
+      if (!classIds.includes(classId)) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '权限不足'
+          }
+        });
+      } else {
+        studentManager.updateHwDraft(
+          req.session.loginUser._id,
+          classId,
+          createDate,
+          answer,
+          files
+        ).then(() => {
+          res.send({
+            stats: 1,
+            data: {}
+          });
+        }).catch((error) => {
+          debug(error);
+          res.send({
+            stats: 0,
+            data: {
+              error: '保存失败'
+            }
+          });
+        });
+      }
+    } catch(error) {
+      debug(error);
+      res.send({
+        stats: 0,
+        data: {
+          error: '服务器错误'
+        }
+      });
+    }
+  });
+
   return router;
 }

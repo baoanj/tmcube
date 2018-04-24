@@ -141,5 +141,36 @@ module.exports = (db) => {
         });
       });
     },
+
+    updateHwDraft(userId, classId, createDate, answer, files) {
+      return new Promise((resolve, reject) => {
+        collection.findOne({ classId }).then((doc) => {
+        	const homework = doc.homeworks.find((item) => item.createDate === createDate);
+          const draft = homework.drafts[userId];
+          const delFiles = draft ? fileSystem.getDeleteFiles(draft.files, files) : [];
+          fileSystem.deleteFiles(delFiles).then(() => {
+            collection.updateOne(
+              { classId },
+              { $set: {
+                [`homeworks.$[hw].drafts.${userId}.answer`]: answer,
+                [`homeworks.$[hw].drafts.${userId}.files`]: files,
+              } },
+              { arrayFilters: [{ 'hw.createDate': createDate }] }
+            ).then(() => {
+              resolve();
+            }).catch((error) => {
+              debug(error);
+              reject(error);
+            });
+          }).catch((error) => {
+            debug(error);
+            reject(error);
+          });
+        }).catch((error) => {
+          debug(error);
+          reject(error);
+        });
+      });
+    }
   };
 };

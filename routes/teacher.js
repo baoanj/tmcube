@@ -96,6 +96,16 @@ module.exports = (db) => {
       name: item.originalname,
       filename: item.filename
     }));
+    if (beginDate && endDate && +beginDate > +endDate) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '时间区间错误'
+        }
+      });
+      return;
+    }
+
     teacherManager.updateClassHws(classId, createDate, beginDate, endDate, title, description, files)
       .then(() => {
         res.send({
@@ -123,6 +133,16 @@ module.exports = (db) => {
         name: item.originalname,
         filename: item.filename
       })));
+      if (beginDate && endDate && +beginDate > +endDate) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '时间区间错误'
+          }
+        });
+        return;
+      }
+
       teacherManager.updateHomework(classId, createDate, beginDate, endDate, title, description, files)
         .then(() => {
           res.send({

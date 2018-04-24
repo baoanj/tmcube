@@ -17,7 +17,8 @@ module.exports = (db) => {
           message,
           homeworks: [],
           userIds: [],
-          coursewares: []
+          coursewares: [],
+          tas: []
         }).then((result) => {
           resolve(result)
         }).catch((error) => {
@@ -68,7 +69,8 @@ module.exports = (db) => {
             hwAnswer: {
               answer: '',
               files: []
-            }
+            },
+            drafts: {}
           } } }
         ).then(() => {
           resolve();
