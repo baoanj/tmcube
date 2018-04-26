@@ -3,6 +3,7 @@ const debug = require('debug')('tmcube:teacher');
 const multer = require('multer');
 const upload = multer({ dest: 'data/' });
 const router = express.Router();
+const validate = require('../utils/validate');
 
 module.exports = (db) => {
   const teacherManager = require('../models/teacherModel')(db);
@@ -23,6 +24,18 @@ module.exports = (db) => {
 
   router.post('/addClass', (req, res, next) => {
     const { classId, name, teacherName, password, message } = req.body;
+
+    if (!validate.validClassId(classId) || !validate.validClassName(name) ||
+      !validate.validClassPass(password)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '填写的信息有误'
+        }
+      });
+      return;
+    }
+
     teacherManager.insertClass(classId, name, teacherName, password, message).then(() => {
       const classIds = ([classId]).concat(req.session.loginUser.classIds);
       generalManager.updateUserClassIds(req.session.loginUser._id, classIds).then(() => {
@@ -54,6 +67,17 @@ module.exports = (db) => {
   router.put('/editClass/:classId', (req, res, next) => {
     const { classId } = req.params;
     const { name, teacherName, password, message } = req.body;
+
+    if (!validate.validClassName(name) || !validate.validClassPass(password)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '填写的信息有误'
+        }
+      });
+      return;
+    }
+
     teacherManager.updateClassMsg(classId, name, teacherName, password, message)
       .then(() => {
         res.send({
@@ -91,7 +115,18 @@ module.exports = (db) => {
 
   router.post('/addHw/:classId', upload.array('files', 10), (req, res, next) => {
     const classId = req.params.classId;
-    const { createDate, beginDate, endDate, title, description } = req.body;
+    const { beginDate, endDate, title, description } = req.body;
+
+    if (!validate.validHwTitle(title)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '填写的信息有误'
+        }
+      });
+      return;
+    }
+
     const files = req.files.map((item) => ({
       name: item.originalname,
       filename: item.filename
@@ -106,7 +141,7 @@ module.exports = (db) => {
       return;
     }
 
-    teacherManager.updateClassHws(classId, createDate, beginDate, endDate, title, description, files)
+    teacherManager.updateClassHws(classId, Date.now() + '', beginDate, endDate, title, description, files)
       .then(() => {
         res.send({
           stats: 1,
@@ -129,6 +164,17 @@ module.exports = (db) => {
     try {
       const { classId, createDate } = req.params;
       const { beginDate, endDate, title, description, existFiles } = req.body;
+
+      if (!validate.validHwTitle(title)) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '填写的信息有误'
+          }
+        });
+        return;
+      }
+
       const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
         name: item.originalname,
         filename: item.filename
@@ -193,12 +239,12 @@ module.exports = (db) => {
 
   router.post('/uploadCourseware/:classId', upload.array('files', 10), (req, res, next) => {
     const { classId } = req.params;
-    const { title, existFiles, uploadDate } = req.body;
+    const { title, existFiles } = req.body;
     const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
       name: item.originalname,
       filename: item.filename
     })));
-    teacherManager.uploadClassCourseware(classId, title, uploadDate, files)
+    teacherManager.uploadClassCourseware(classId, title, Date.now() + '', files)
       .then(() => {
         res.send({
           stats: 1,
@@ -385,6 +431,17 @@ module.exports = (db) => {
     try {
       const { classId } = req.params;
       const { tas } = req.body;
+
+      if (!validate.isArray(tas)) {
+        res.send({
+          stats: 0,
+          data: {
+            error: '错误'
+          }
+        });
+        return;
+      }
+
       teacherManager.updateClassTas(classId, tas)
         .then(() => {
           res.send({

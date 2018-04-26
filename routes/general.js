@@ -3,6 +3,7 @@ const debug = require('debug')('tmcube:general');
 const svgCaptcha = require('../utils/svg-captcha');
 const router = express.Router();
 const sendEmail = require('../utils/sendEmail');
+const validate = require('../utils/validate');
 
 module.exports = (db) => {
   const generalManager = require('../models/generalModel')(db);
@@ -15,6 +16,17 @@ module.exports = (db) => {
         stats: 0,
         data: {
           error: '验证码错误'
+        },
+      });
+      return;
+    }
+
+    if (!validate.validEmail(email) || !validate.validPassword2(password) || !name ||
+      (role === 'student' && !stuId) || (role !== 'student' && role !== 'teacher')) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '填写的信息有误'
         },
       });
       return;
@@ -161,6 +173,16 @@ module.exports = (db) => {
         stats: 0,
         data: {
           error: '验证码错误'
+        },
+      });
+      return;
+    }
+
+    if (!validate.validEmail(email)) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '邮箱格式错误'
         },
       });
       return;

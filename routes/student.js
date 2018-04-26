@@ -3,6 +3,7 @@ const debug = require('debug')('tmcube:student');
 const router = express.Router();
 const multer = require('multer');
 const upload = multer({ dest: 'data/' });
+const validate = require('../utils/validate');
 
 module.exports = (db) => {
   const studentManager = require('../models/studentModel')(db);
@@ -64,7 +65,7 @@ module.exports = (db) => {
 
   router.post('/submitHw/:classId/:createDate', upload.array('files', 10), (req, res, next) => {
     const { classId, createDate } = req.params;
-    const { answer, date } = req.body;
+    const { answer } = req.body;
     const files = req.files.map((item) => ({
       name: item.originalname,
       filename: item.filename
@@ -87,7 +88,7 @@ module.exports = (db) => {
         createDate,
         answer,
         files,
-        date
+        Date.now() + ''
       ).then(() => {
         res.send({
           stats: 1,
@@ -108,7 +109,7 @@ module.exports = (db) => {
   router.put('/editHwSub/:classId/:createDate', upload.array('files', 10), (req, res, next) => {
     try {
       const { classId, createDate } = req.params;
-      const { answer, date, existFiles } = req.body;
+      const { answer, existFiles } = req.body;
       const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
         name: item.originalname,
         filename: item.filename
@@ -128,7 +129,7 @@ module.exports = (db) => {
           createDate,
           answer,
           files,
-          date
+          Date.now() + ''
         ).then(() => {
           res.send({
             stats: 1,
@@ -195,6 +196,17 @@ module.exports = (db) => {
 
   router.put('/editUserMsg', (req, res, next) => {
     const { name, stuId } = req.body;
+
+    if (!name || !stuId) {
+      res.send({
+        stats: 0,
+        data: {
+          error: '填写的信息有误'
+        }
+      });
+      return;
+    }
+
     studentManager.updateUserMsg(req.session.loginUser._id, name, stuId).then(() => {
       req.session.loginUser.name = name;
       req.session.loginUser.stuId = stuId;
