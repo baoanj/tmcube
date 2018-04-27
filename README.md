@@ -2,7 +2,13 @@
 
 > 基于现代Web技术的高校教学管理系统后台项目
 
-## 运行
+## 开发环境
+
+- Node.js >= 8
+- npm >= 5
+- mongoDB >= 3.6
+
+## 启动项目
 
 ``` bash
 # install dependencies
@@ -17,3 +23,8 @@ npm start
 # build for deploy
 npm run build
 ```
+## 技术栈
+- Node.js
+- Express
+- Webpack
+- ES6

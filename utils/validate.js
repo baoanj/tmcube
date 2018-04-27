@@ -103,4 +103,9 @@ module.exports = {
     const pattern = /^.{1,50}$/;
     return pattern.test(title);
   },
+
+  validUniqueId(id) {
+    const pattern = /^[a-f0-9]{24}$/;
+    return pattern.test(id);
+  },
 };

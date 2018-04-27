@@ -11,7 +11,7 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.findOne({ classId, password }).then((doc) => {
         	if (doc) resolve();
-          else reject();
+          else reject('密码错误');
         }).catch((error) => {
           reject(error);
         });
@@ -59,9 +59,10 @@ module.exports = (db) => {
     },
 
     editHwSub(userId, classId, createDate, answer, files, date) {
-      return new Promise((resolve, reject) => {
-        collection.findOne({ classId }).then((doc) => {
-        	const homework = doc.homeworks.find((item) => item.createDate === createDate);
+      return new Promise(async (resolve, reject) => {
+        try {
+          const doc = await collection.findOne({ classId });
+          const homework = doc.homeworks.find((item) => item.createDate === createDate);
           let submission = null;
           for (let i = 0; i < homework.submissions.length; i++) {
             if (homework.submissions[i].userId === userId) {
@@ -70,36 +71,28 @@ module.exports = (db) => {
             }
           }
           const delFiles = submission ? fileSystem.getDeleteFiles(submission.files, files) : [];
-          fileSystem.deleteFiles(delFiles).then(() => {
-            collection.updateOne(
-              { classId },
-              { $set: {
-                'homeworks.$[hw].submissions.$[sub].date': date,
-                'homeworks.$[hw].submissions.$[sub].answer': answer,
-                'homeworks.$[hw].submissions.$[sub].files': files
-              } },
-              { arrayFilters: [{ 'hw.createDate': createDate }, { 'sub.userId': userId }] }
-            ).then(() => {
-              resolve();
-            }).catch((error) => {
-              debug(error);
-              reject(error);
-            });
-          }).catch((error) => {
-            debug(error);
-            reject(error);
-          });
-        }).catch((error) => {
-          debug(error);
+          await fileSystem.deleteFiles(delFiles);
+          await collection.updateOne(
+            { classId },
+            { $set: {
+              'homeworks.$[hw].submissions.$[sub].date': date,
+              'homeworks.$[hw].submissions.$[sub].answer': answer,
+              'homeworks.$[hw].submissions.$[sub].files': files
+            } },
+            { arrayFilters: [{ 'hw.createDate': createDate }, { 'sub.userId': userId }] }
+          );
+          resolve();
+        } catch(error) {
           reject(error);
-        });
+        }
       });
     },
 
     deleteHwSub(userId, classId, createDate) {
-      return new Promise((resolve, reject) => {
-        collection.findOne({ classId }).then((doc) => {
-        	const homework = doc.homeworks.find((item) => item.createDate === createDate);
+      return new Promise(async (resolve, reject) => {
+        try {
+          const doc = await collection.findOne({ classId });
+          const homework = doc.homeworks.find((item) => item.createDate === createDate);
           let submission = null;
           for (let i = 0; i < homework.submissions.length; i++) {
             if (homework.submissions[i].userId === userId) {
@@ -107,25 +100,16 @@ module.exports = (db) => {
               break;
             }
           }
-          fileSystem.deleteFiles(submission ? submission.files : []).then(() => {
-            collection.updateOne(
-              { classId },
-              { $pull: { 'homeworks.$[hw].submissions': { userId } } },
-              { arrayFilters: [{ 'hw.createDate': createDate }] }
-            ).then(() => {
-              resolve();
-            }).catch((error) => {
-              debug(error);
-              reject(error);
-            });
-          }).catch((error) => {
-            debug(error);
-            reject(error);
-          });
-        }).catch((error) => {
-          debug(error);
+          await fileSystem.deleteFiles(submission ? submission.files : []);
+          await collection.updateOne(
+            { classId },
+            { $pull: { 'homeworks.$[hw].submissions': { userId } } },
+            { arrayFilters: [{ 'hw.createDate': createDate }] }
+          );
+          resolve();
+        } catch(error) {
           reject(error);
-        });
+        }
       });
     },
 
@@ -143,33 +127,25 @@ module.exports = (db) => {
     },
 
     updateHwDraft(userId, classId, createDate, answer, files) {
-      return new Promise((resolve, reject) => {
-        collection.findOne({ classId }).then((doc) => {
-        	const homework = doc.homeworks.find((item) => item.createDate === createDate);
+      return new Promise(async (resolve, reject) => {
+        try {
+          const doc = await collection.findOne({ classId });
+          const homework = doc.homeworks.find((item) => item.createDate === createDate);
           const draft = homework.drafts[userId];
           const delFiles = draft ? fileSystem.getDeleteFiles(draft.files, files) : [];
-          fileSystem.deleteFiles(delFiles).then(() => {
-            collection.updateOne(
-              { classId },
-              { $set: {
-                [`homeworks.$[hw].drafts.${userId}.answer`]: answer,
-                [`homeworks.$[hw].drafts.${userId}.files`]: files,
-              } },
-              { arrayFilters: [{ 'hw.createDate': createDate }] }
-            ).then(() => {
-              resolve();
-            }).catch((error) => {
-              debug(error);
-              reject(error);
-            });
-          }).catch((error) => {
-            debug(error);
-            reject(error);
-          });
-        }).catch((error) => {
-          debug(error);
+          await fileSystem.deleteFiles(delFiles);
+          await collection.updateOne(
+            { classId },
+            { $set: {
+              [`homeworks.$[hw].drafts.${userId}.answer`]: answer,
+              [`homeworks.$[hw].drafts.${userId}.files`]: files,
+            } },
+            { arrayFilters: [{ 'hw.createDate': createDate }] }
+          );
+          resolve();
+        } catch(error) {
           reject(error);
-        });
+        }
       });
     }
   };

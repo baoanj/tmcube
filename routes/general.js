@@ -4,557 +4,272 @@ const svgCaptcha = require('../utils/svg-captcha');
 const router = express.Router();
 const sendEmail = require('../utils/sendEmail');
 const validate = require('../utils/validate');
+const reSend = require('../utils/reSend');
 
 module.exports = (db) => {
   const generalManager = require('../models/generalModel')(db);
 
-  router.post('/regist', (req, res, next) => {
-    const { name, stuId, email, password, role, captcha, host } = req.body;
+  router.post('/regist', async (req, res, next) => {
+    try {
+      const { name, stuId, email, password, role, captcha, host } = req.body;
 
-    if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '验证码错误'
-        },
-      });
-      return;
+      if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) throw '验证码错误';
+      if (!validate.validEmail(email) || !validate.validPassword2(password) || !name ||
+        (role === 'student' && !stuId) || (role !== 'student' && role !== 'teacher')) {
+        throw '填写的信息有误';
+      }
+
+      await generalManager.checkEmailNotExist(email);
+      await generalManager.insertUser(name, stuId, email, password, role);
+      const result = await generalManager.addValidateEmail(email);
+      await sendEmail(
+        email,
+        '【邮箱激活】高校教学管理系统',
+        `请复制此链接在浏览器窗口打开：${host}/activate/${result.ops[0]._id}`
+      );
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
     }
-
-    if (!validate.validEmail(email) || !validate.validPassword2(password) || !name ||
-      (role === 'student' && !stuId) || (role !== 'student' && role !== 'teacher')) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '填写的信息有误'
-        },
-      });
-      return;
-    }
-
-    generalManager.checkEmailExist(email).then(() => {
-      generalManager.insertUser(name, stuId, email, password, role).then(() => {
-        generalManager.addValidateEmail(email).then((result) => {
-          sendEmail(
-            email,
-            '【邮箱激活】高校教学管理系统',
-            `请复制此链接在浏览器窗口打开：${host}/activate/${result.ops[0]._id}`
-          ).then(() => {
-            res.send({
-              stats: 1,
-              data: {}
-            });
-          }).catch((error) => {
-            debug(error);
-            res.send({
-              stats: 1,
-              data: {}
-            });
-          });
-        }).catch((error) => {
-          debug(error);
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        });
-      }, (error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '注册失败'
-          }
-        });
-      });
-    }, () => {
-      res.send({
-        stats: 0,
-        data: {
-          error: '邮箱已注册'
-        }
-      });
-    });
   });
 
-  router.post('/sendEmail', (req, res, next) => {
-    const { email, host } = req.body;
+  router.post('/sendEmail', async (req, res, next) => {
+    try {
+      const { email, host } = req.body;
 
-    generalManager.findValidateId(email).then((activateId) => {
-      sendEmail(
+      const activateId = await generalManager.findValidateId(email);
+      if (activateId === null) throw '无法激活';
+      await sendEmail(
         email,
         '【邮箱激活】高校教学管理系统',
         `请复制此链接在浏览器窗口打开：${host}/activate/${activateId}`
-      ).then(() => {
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      }).catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '邮件发送失败'
-          }
-        });
-      });
-    }, (error) => {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '系统出错，请联系管理员'
-        }
-      });
-    });
+      );
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
-  router.put('/activateEmail/:activateId', (req, res, next) => {
-    const { activateId } = req.params;
+  router.put('/activateEmail/:activateId', async (req, res, next) => {
+    try {
+      const { activateId } = req.params;
 
-    if (!/^[a-f0-9]{24}$/.test(activateId)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '无效链接'
-        }
-      });
-      return;
+      if (!validate.validUniqueId(activateId)) throw '无效链接';
+
+      const email = await generalManager.findValidateEmail(activateId);
+      if (email === null) throw '无效链接';
+      await generalManager.updateUserActivation(email);
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
     }
-
-    generalManager.findValidateEmail(activateId).then((email) => {
-      generalManager.updateUserActivation(email).then(() => {
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      }).catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '激活失败'
-          }
-        });
-      })
-    }, (error) => {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '无效的激活'
-        }
-      });
-    });
   });
 
-  router.post('/checkEmail', (req, res, next) => {
-    generalManager.checkEmailExist(req.body.email).then(() => {
-      res.send({
-        stats: 1,
-        data: {}
-      });
-    }, () => {
-      res.send({
-        stats: 0,
-        data: {
-          error: '邮箱已注册'
-        }
-      });
-    });
+  router.post('/checkEmail', async (req, res, next) => {
+    try {
+      await generalManager.checkEmailNotExist(req.body.email);
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
-  router.post('/login', (req, res, next) => {
-    const { email, password, captcha } = req.body;
+  router.post('/login', async (req, res, next) => {
+    try {
+      const { email, password, captcha } = req.body;
 
-    if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '验证码错误'
-        },
-      });
-      return;
-    }
+      if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) throw '验证码错误';
+      if (!validate.validEmail(email)) throw '邮箱格式错误';
 
-    if (!validate.validEmail(email)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '邮箱格式错误'
-        },
-      });
-      return;
-    }
-
-    generalManager.checkLogin(email, password).then((user) => {
+      const user = await generalManager.checkLogin(email, password);
       req.session.regenerate((err) => {
         if (err) {
-          res.send({
-            stats: 0,
-            data: {
-              error: '登录失败'
-            },
-          });
+          throw new Error('req.session.regenerate err');
         } else {
           req.session.loginUser = user;
-          res.send({
-            stats: 1,
-            data: {},
-          });
+          reSend.success(res, {});
         }
       });
-    }, (error) => {
-      res.send({
-        stats: 0,
-        data: {
-          error
-        },
-      });
-    });
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
-  router.get('/getCaptcha', (req, res, next) => {
-    const captcha = svgCaptcha.create();
-    req.session.captcha = captcha.text;
-    res.send({
-      stats: 1,
-      data: {
+  router.get('/getCaptcha', async (req, res, next) => {
+    try {
+      const captcha = svgCaptcha.create();
+      req.session.captcha = captcha.text;
+      reSend.success(res, {
         captcha: captcha.data
-      }
-    });
-  });
-
-  router.post('/checkCaptcha', (req, res, next) => {
-    if (req.body.captcha.toUpperCase() === req.session.captcha.toUpperCase()) {
-      res.send({
-        stats: 1,
-        data: {}
       });
-    } else {
-      res.send({
-        stats: 0,
-        data: {
-          error: '验证码错误'
-        }
-      });
+    } catch(error) {
+      reSend.error(res, error);
     }
   });
 
-  router.post('/forgotPass', (req, res, next) => {
-    const { email, captcha, host } = req.body;
-
-    if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '验证码错误'
-        },
-      });
-      return;
-    }
-
-    generalManager.checkEmailExist(email).then(() => {
-      res.send({
-        stats: 0,
-        data: {
-          error: '邮箱未注册'
-        }
-      });
-    }, () => {
-      generalManager.addForgotPass(email).then((result) => {
-        sendEmail(
-          email,
-          '【重置密码】高校教学管理系统',
-          `请复制此链接(10分钟内有效)在浏览器窗口打开：${host}/reset/${result.ops[0]._id}`
-        ).then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        }).catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '邮件发送失败'
-            }
-          });
-        });
-      }).catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '服务器出毛病了'
-          }
-        });
-      });
-    });
-  });
-
-  router.post('/checkReset/:resetId', (req, res, next) => {
-    const { resetId } = req.params;
-
-    if (!/^[a-f0-9]{24}$/.test(resetId)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '无效链接'
-        }
-      });
-      return;
-    }
-
-    generalManager.findForgotPass(resetId).then((data) => {
-      if (!data) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '无效链接'
-          }
-        });
-      } else if (data.expiredDate < Date.now()) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '该链接已失效'
-          }
-        });
+  router.post('/checkCaptcha', async (req, res, next) => {
+    try {
+      if (req.body.captcha.toUpperCase() === req.session.captcha.toUpperCase()) {
+        reSend.success(res, {});
       } else {
-        res.send({
-          stats: 1,
-          data: {}
-        });
+        throw '验证码错误';
       }
-    }).catch((error) => {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '服务器出毛病了'
-        }
-      });
-    });
-  });
-
-  router.post('/resetPass/:resetId', (req, res, next) => {
-    const { password } = req.body;
-    const { resetId } = req.params;
-
-    if (!/^[a-f0-9]{24}$/.test(resetId)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '无效链接'
-        }
-      });
-      return;
+    } catch(error) {
+      reSend.error(res, error);
     }
-
-    generalManager.findForgotPass(resetId).then((data) => {
-      if (!data) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '无效链接'
-          }
-        });
-      } else if (data.expiredDate < Date.now()) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '该链接已失效'
-          }
-        });
-      } else {
-        generalManager.updateUserPassword(data.email, password).then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        }).catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '重置失败'
-            }
-          });
-        });
-      }
-    }).catch((error) => {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '服务器出毛病了'
-        }
-      });
-    });
   });
 
-  router.all('*', (req, res, next) => {
-		if (req.session.loginUser) {
-			next();
-		} else {
-			res.send({
-        stats: 0,
-        data: {
-          error: '未登录'
-        }
-      });
-		}
+  router.post('/forgotPass', async (req, res, next) => {
+    try {
+      const { email, captcha, host } = req.body;
+
+      if (captcha.toUpperCase() !== req.session.captcha.toUpperCase()) throw '验证码错误';
+
+      await generalManager.checkEmailExist(email);
+      const result = await generalManager.addForgotPass(email);
+      await sendEmail(
+        email,
+        '【重置密码】高校教学管理系统',
+        `请复制此链接(10分钟内有效)在浏览器窗口打开：${host}/reset/${result.ops[0]._id}`
+      );
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
+  });
+
+  router.post('/checkReset/:resetId', async (req, res, next) => {
+    try {
+      const { resetId } = req.params;
+
+      if (!validate.validUniqueId(resetId)) throw '无效链接';
+
+      const data = await generalManager.findForgotPass(resetId);
+      if (!data) throw '无效链接';
+      if (data.expiredDate < Date.now()) throw '该链接已失效';
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
+  });
+
+  router.post('/resetPass/:resetId', async (req, res, next) => {
+    try {
+      const { password } = req.body;
+      const { resetId } = req.params;
+
+      if (!validate.validUniqueId(resetId)) throw '无效链接';
+      if (!validate.validPassword2(password)) throw '密码格式错误';
+
+      const data = await generalManager.findForgotPass(resetId);
+      if (!data) throw '无效链接';
+      if (data.expiredDate < Date.now()) throw '该链接已失效';
+      await generalManager.updateUserPassword(data.email, password);
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
+  });
+
+  router.all('*', async (req, res, next) => {
+		try {
+      if (req.session.loginUser) {
+  			next();
+  		} else {
+        throw '未登录';
+  		}
+    } catch(error) {
+      reSend.error(res, error);
+    }
 	});
 
-  router.get('/getClasses', (req, res, next) => {
-    const classIds = req.session.loginUser.classIds;
-    if (classIds.length === 0) {
-      res.send({
-        stats: 1,
-        data: {
+  router.get('/getClasses', async (req, res, next) => {
+    try {
+      const classIds = req.session.loginUser.classIds;
+      if (classIds.length === 0) {
+        reSend.success(res, {
           classes: [],
           classIds: []
-        }
-      });
-    } else {
-      generalManager.findClasses(classIds).then((result) => {
-        res.send({
-          stats: 1,
-          data: {
-            classes: result,
-            classIds
-          }
         });
-      }, (error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '获取班级数据失败'
-          }
+      } else {
+        const result = await generalManager.findClasses(classIds);
+        reSend.success(res, {
+          classes: result,
+          classIds
         });
-      });
+      }
+    } catch(error) {
+      reSend.error(res, error);
     }
   });
 
-  router.put('/moveClasses', (req, res, next) => {
-    const { classIds } = req.body;
-    generalManager.updateUserClassIds(req.session.loginUser._id, classIds).then(() => {
+  router.put('/moveClasses', async (req, res, next) => {
+    try {
+      const { classIds } = req.body;
+
+      await generalManager.updateUserClassIds(req.session.loginUser._id, classIds);
       req.session.loginUser.classIds = classIds;
-      res.send({
-        stats: 1,
-        data: {}
-      });
-    }).catch((error) => {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '移动失败'
-        }
-      });
-    });
-  });
-
-  router.get('/getHws', (req, res, next) => {
-    const { classId } = req.query;
-    const classIds = req.session.loginUser.classIds;
-    if (!classIds.includes(classId)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '权限不足'
-        }
-      });
-    } else {
-      generalManager.findClass(classId, req.session.loginUser).then((result) => {
-        res.send({
-          stats: 1,
-          data: {
-            class: result
-          }
-        });
-      }, (error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '获取数据失败'
-          }
-        });
-      });
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
     }
   });
 
-  router.get('/getSubs', (req, res, next) => {
-    const { classId, createDate } = req.query;
-    const classIds = req.session.loginUser.classIds;
-    if (!classIds.includes(classId)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '权限不足'
-        }
+  router.get('/getHws', async (req, res, next) => {
+    try {
+      const { classId } = req.query;
+      const classIds = req.session.loginUser.classIds;
+      if (!classIds.includes(classId)) throw '权限不足';
+      const result = await generalManager.findClass(classId, req.session.loginUser);
+      reSend.success(res, {
+        class: result
       });
-    } else {
-      generalManager.findHw(
+    } catch(error) {
+      reSend.error(res, error);
+    }
+  });
+
+  router.get('/getSubs', async (req, res, next) => {
+    try {
+      const { classId, createDate } = req.query;
+      const classIds = req.session.loginUser.classIds;
+      if (!classIds.includes(classId)) throw '权限不足';
+      const result = await generalManager.findHw(
         classId,
         createDate,
         req.session.loginUser
-      ).then((result) => {
-        res.send({
-          stats: 1,
-          data: {
-            homework: result
-          }
-        });
-      }, (error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '获取数据失败'
-          }
-        });
+      );
+      reSend.success(res, {
+        homework: result
       });
+    } catch(error) {
+      reSend.error(res, error);
     }
   });
 
-  router.get('/profile', (req, res, next) => {
-    res.send({
-      stats: 1,
-      data: {
-        profile: {
-          name: req.session.loginUser.name,
-          stuId: req.session.loginUser.stuId,
-          email: req.session.loginUser.email,
-          role: req.session.loginUser.role
-        }
+  router.get('/profile', async (req, res, next) => {
+    reSend.success(res, {
+      profile: {
+        name: req.session.loginUser.name,
+        stuId: req.session.loginUser.stuId,
+        email: req.session.loginUser.email,
+        role: req.session.loginUser.role
       }
     });
   });
 
-  router.post('/logout', (req, res, next) => {
-    req.session.destroy((err) => {
-      if (err) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '退出失败'
-          }
-        });
-      } else {
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      }
-    });
+  router.post('/logout', async (req, res, next) => {
+    try {
+      req.session.destroy((err) => {
+        if (err) throw new Error('req.session.destroy err');
+        reSend.success(res, {});
+      });
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
-  router.get('/download/:filename/:name', (req, res, next) => {
+  router.get('/download/:filename/:name', async (req, res, next) => {
     const { filename, name } = req.params;
     res.download(`data/${filename}`, name);
   });

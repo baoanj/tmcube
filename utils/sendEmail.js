@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const debug = require('debug')('tmcube:utils:sendEmail');
 const transport = require('../mail.config.js');
 
 const transporter = nodemailer.createTransport(transport);
@@ -10,9 +11,10 @@ module.exports = (to, subject, text) =>
       to,
       subject,
       text
-    }).then((info) => {
-      resolve(info);
+    }).then(() => {
+      resolve();
     }).catch((error) => {
-      reject(error);
+      debug(error);
+      reject('邮件发送失败');
     });
   });

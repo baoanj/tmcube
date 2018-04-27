@@ -19,10 +19,9 @@ module.exports = (db) => {
           userIds: [],
           coursewares: [],
           tas: []
-        }).then((result) => {
-          resolve(result)
+        }).then(() => {
+          resolve()
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });
@@ -36,7 +35,6 @@ module.exports = (db) => {
         ).then(() => {
           resolve();
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });
@@ -45,10 +43,9 @@ module.exports = (db) => {
     checkClassIdUnique(classId) {
       return new Promise((resolve, reject) => {
         collection.findOne({ classId }).then((doc) => {
-        	if (doc) reject();
+        	if (doc) reject('此Id已存在');
           else resolve();
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });
@@ -75,42 +72,33 @@ module.exports = (db) => {
         ).then(() => {
           resolve();
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });
     },
 
     updateHomework(classId, createDate, beginDate, endDate, title, description, files) {
-      return new Promise((resolve, reject) => {
-        collection.findOne({ classId }).then((doc) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const doc = await collection.findOne({ classId });
           const homework = doc.homeworks.find(item => item.createDate === createDate);
           const delFiles = fileSystem.getDeleteFiles(homework.files, files);
-          fileSystem.deleteFiles(delFiles).then(() => {
-            collection.updateOne(
-              { classId },
-              { $set: {
-                'homeworks.$[hw].beginDate': beginDate,
-                'homeworks.$[hw].endDate': endDate,
-                'homeworks.$[hw].title': title,
-                'homeworks.$[hw].description': description,
-                'homeworks.$[hw].files': files
-              } },
-              { arrayFilters: [ { 'hw.createDate': createDate } ] }
-            ).then(() => {
-              resolve();
-            }).catch((error) => {
-              debug(error);
-              reject(error);
-            });
-          }).catch((error) => {
-            debug(error);
-            reject(error);
-          });
-        }).catch((error) => {
-          debug(error);
+          await fileSystem.deleteFiles(delFiles);
+          await collection.updateOne(
+            { classId },
+            { $set: {
+              'homeworks.$[hw].beginDate': beginDate,
+              'homeworks.$[hw].endDate': endDate,
+              'homeworks.$[hw].title': title,
+              'homeworks.$[hw].description': description,
+              'homeworks.$[hw].files': files
+            } },
+            { arrayFilters: [ { 'hw.createDate': createDate } ] }
+          );
+          resolve();
+        } catch(error) {
           reject(error);
-        });
+        }
       });
     },
 
@@ -126,7 +114,6 @@ module.exports = (db) => {
         ).then(() => {
           resolve();
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });
@@ -144,96 +131,70 @@ module.exports = (db) => {
         ).then(() => {
           resolve();
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });
     },
 
     updateCourseware(classId, title, uploadDate, files) {
-      return new Promise((resolve, reject) => {
-        collection.findOne({ classId }).then((doc) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const doc = await collection.findOne({ classId });
           const courseware = doc.coursewares.find(item => item.uploadDate === uploadDate);
           const delFiles = fileSystem.getDeleteFiles(courseware.files, files);
-          fileSystem.deleteFiles(delFiles).then(() => {
-            collection.updateOne(
-              { classId },
-              { $set: {
-                'coursewares.$[cw].title': title,
-                'coursewares.$[cw].files': files
-              } },
-              { arrayFilters: [ { 'cw.uploadDate': uploadDate } ] }
-            ).then(() => {
-              resolve();
-            }).catch((error) => {
-              debug(error);
-              reject(error);
-            });
-          }).catch((error) => {
-            debug(error);
-            reject(error);
-          });
-        }).catch((error) => {
-          debug(error);
+          await fileSystem.deleteFiles(delFiles);
+          await collection.updateOne(
+            { classId },
+            { $set: {
+              'coursewares.$[cw].title': title,
+              'coursewares.$[cw].files': files
+            } },
+            { arrayFilters: [ { 'cw.uploadDate': uploadDate } ] }
+          );
+          resolve();
+        } catch(error) {
           reject(error);
-        });
+        }
       });
     },
 
     deleteCourseware(classId, uploadDate) {
-      // TODO: 尝试使用 async await
-      return new Promise((resolve, reject) => {
-        collection.findOne({ classId }).then((doc) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const doc = await collection.findOne({ classId });
           const courseware = doc.coursewares.find(item => item.uploadDate === uploadDate);
           const files = courseware.files;
-          fileSystem.deleteFiles(files).then(() => {
-            collection.updateOne(
-              { classId },
-              { $pull: { coursewares: { uploadDate } } }
-            ).then(() => {
-              resolve();
-            }).catch((error) => {
-              debug(error);
-              reject(error);
-            });
-          }).catch((error) => {
-            debug(error);
-            reject(error);
-          });
-        }).catch((error) => {
-          debug(error);
+          await fileSystem.deleteFiles(files);
+          await collection.updateOne(
+            { classId },
+            { $pull: { coursewares: { uploadDate } } }
+          );
+          resolve();
+        } catch(error) {
           reject(error);
-        });
+        }
       });
     },
 
     uploadHwAnswer(classId, createDate, answer, files) {
-      return new Promise((resolve, reject) => {
-        collection.findOne({ classId }).then((doc) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const doc = await collection.findOne({ classId });
           const homework = doc.homeworks.find(item => item.createDate === createDate);
           const delFiles = fileSystem.getDeleteFiles(homework.hwAnswer.files, files);
-          fileSystem.deleteFiles(delFiles).then(() => {
-            collection.updateOne(
-              { classId },
-              { $set: { 'homeworks.$[hw].hwAnswer': {
-                answer,
-                files
-              } } },
-              { arrayFilters: [ { 'hw.createDate': createDate } ] }
-            ).then(() => {
-              resolve();
-            }).catch((error) => {
-              debug(error);
-              reject(error);
-            });
-          }).catch((error) => {
-            debug(error);
-            reject(error);
-          });
-        }).catch((error) => {
-          debug(error);
+          await fileSystem.deleteFiles(delFiles);
+          await collection.updateOne(
+            { classId },
+            { $set: { 'homeworks.$[hw].hwAnswer': {
+              answer,
+              files
+            } } },
+            { arrayFilters: [ { 'hw.createDate': createDate } ] }
+          );
+          resolve();
+        } catch(error) {
           reject(error);
-        });
+        }
       });
     },
 
@@ -255,7 +216,6 @@ module.exports = (db) => {
             });
           });
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });
@@ -290,7 +250,6 @@ module.exports = (db) => {
           }
           resolve(result);
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });
@@ -304,7 +263,6 @@ module.exports = (db) => {
         ).then(() => {
           resolve();
         }).catch((error) => {
-          debug(error);
           reject(error);
         });
       });

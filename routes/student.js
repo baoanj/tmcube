@@ -4,82 +4,53 @@ const router = express.Router();
 const multer = require('multer');
 const upload = multer({ dest: 'data/' });
 const validate = require('../utils/validate');
+const reSend = require('../utils/reSend');
 
 module.exports = (db) => {
   const studentManager = require('../models/studentModel')(db);
   const generalManager = require('../models/generalModel')(db);
 
-  router.all('*', (req, res, next) => {
-		if (req.session.loginUser) {
-			next();
-		} else {
-			res.send({
-        stats: 0,
-        data: {
-          error: '未登录'
-        }
-      });
-		}
+  router.all('*', async (req, res, next) => {
+		try {
+      if (req.session.loginUser) {
+  			next();
+  		} else {
+        throw '未登录';
+  		}
+    } catch(error) {
+      reSend.error(res, error);
+    }
 	});
 
-  router.post('/enterClass', (req, res, next) => {
-    const { classId, password } = req.body;
-    if (req.session.loginUser.classIds.includes(classId)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '你已添加此班级，无需重复添加'
-        }
-      });
-      return;
-    }
-    studentManager.findClass(classId, password).then(() => {
+  router.post('/enterClass', async (req, res, next) => {
+    try {
+      const { classId, password } = req.body;
+
+      if (req.session.loginUser.classIds.includes(classId)) throw '你已添加此班级，无需重复添加';
+
+      await studentManager.findClass(classId, password);
       const classIds = ([classId]).concat(req.session.loginUser.classIds);
-      generalManager.updateUserClassIds(req.session.loginUser._id, classIds).then(() => {
-        studentManager.updateClassUserIds(req.session.loginUser._id, classId).then(() => {
-          req.session.loginUser.classIds = classIds;
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        });
-      }).catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '添加失败'
-          }
-        });
-      });
-    }).catch((error) => {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '密码错误'
-        }
-      });
-    });
+      await generalManager.updateUserClassIds(req.session.loginUser._id, classIds);
+      await studentManager.updateClassUserIds(req.session.loginUser._id, classId);
+      req.session.loginUser.classIds = classIds;
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
-  router.post('/submitHw/:classId/:createDate', upload.array('files', 10), (req, res, next) => {
-    const { classId, createDate } = req.params;
-    const { answer } = req.body;
-    const files = req.files.map((item) => ({
-      name: item.originalname,
-      filename: item.filename
-    }));
-    const classIds = req.session.loginUser.classIds;
-    if (!classIds.includes(classId)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '权限不足'
-        }
-      });
-    } else {
-      studentManager.updateHwSubs(
+  router.post('/submitHw/:classId/:createDate', upload.array('files', 10), async (req, res, next) => {
+    try{
+      const { classId, createDate } = req.params;
+      const { answer } = req.body;
+
+      if (!req.session.loginUser.classIds.includes(classId)) throw '权限不足';
+
+      const files = req.files.map((item) => ({
+        name: item.originalname,
+        filename: item.filename
+      }));
+      await studentManager.updateHwSubs(
         req.session.loginUser._id,
         req.session.loginUser.name,
         req.session.loginUser.stuId,
@@ -89,189 +60,89 @@ module.exports = (db) => {
         answer,
         files,
         Date.now() + ''
-      ).then(() => {
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      }).catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '提交失败'
-          }
-        });
-      });
+      );
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
     }
   });
 
-  router.put('/editHwSub/:classId/:createDate', upload.array('files', 10), (req, res, next) => {
+  router.put('/editHwSub/:classId/:createDate', upload.array('files', 10), async (req, res, next) => {
     try {
       const { classId, createDate } = req.params;
       const { answer, existFiles } = req.body;
+
+      if (!req.session.loginUser.classIds.includes(classId)) throw '权限不足';
+
       const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
         name: item.originalname,
         filename: item.filename
       })));
-      const classIds = req.session.loginUser.classIds;
-      if (!classIds.includes(classId)) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '权限不足'
-          }
-        });
-      } else {
-        studentManager.editHwSub(
-          req.session.loginUser._id,
-          classId,
-          createDate,
-          answer,
-          files,
-          Date.now() + ''
-        ).then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        }).catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '修改失败'
-            }
-          });
-        });
-      }
+      await studentManager.editHwSub(
+        req.session.loginUser._id,
+        classId,
+        createDate,
+        answer,
+        files,
+        Date.now() + ''
+      );
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '修改失败'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 
-  router.put('/deleteHwSub/:classId/:createDate', (req, res, next) => {
+  router.put('/deleteHwSub/:classId/:createDate', async (req, res, next) => {
     try {
       const { classId, createDate } = req.params;
       const classIds = req.session.loginUser.classIds;
-      if (!classIds.includes(classId)) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '权限不足'
-          }
-        });
-      } else {
-        studentManager.deleteHwSub(req.session.loginUser._id, classId, createDate).then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        }).catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '撤销失败'
-            }
-          });
-        });
-      }
+
+      if (!req.session.loginUser.classIds.includes(classId)) throw '权限不足';
+
+      await studentManager.deleteHwSub(req.session.loginUser._id, classId, createDate);
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '修改失败'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 
-  router.put('/editUserMsg', (req, res, next) => {
-    const { name, stuId } = req.body;
+  router.put('/editUserMsg', async (req, res, next) => {
+    try {
+      const { name, stuId } = req.body;
 
-    if (!name || !stuId) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '填写的信息有误'
-        }
-      });
-      return;
-    }
+      if (!name || !stuId) throw '填写的信息有误';
 
-    studentManager.updateUserMsg(req.session.loginUser._id, name, stuId).then(() => {
+      await studentManager.updateUserMsg(req.session.loginUser._id, name, stuId);
       req.session.loginUser.name = name;
       req.session.loginUser.stuId = stuId;
-      res.send({
-        stats: 1,
-        data: {}
-      });
-    }).catch((error) => {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '修改失败'
-        }
-      });
-    });
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
   router.put('/updateHwDraft/:classId/:createDate', upload.array('files', 10),
-    (req, res, next) => {
+    async (req, res, next) => {
     try {
       const { classId, createDate } = req.params;
       const { answer, existFiles } = req.body;
+
+      if (!req.session.loginUser.classIds.includes(classId)) throw '权限不足';
+
       const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
         name: item.originalname,
         filename: item.filename
       })));
-      const classIds = req.session.loginUser.classIds;
-      if (!classIds.includes(classId)) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '权限不足'
-          }
-        });
-      } else {
-        studentManager.updateHwDraft(
-          req.session.loginUser._id,
-          classId,
-          createDate,
-          answer,
-          files
-        ).then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        }).catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '保存失败'
-            }
-          });
-        });
-      }
+      await studentManager.updateHwDraft(
+        req.session.loginUser._id,
+        classId,
+        createDate,
+        answer,
+        files
+      );
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '服务器错误'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 

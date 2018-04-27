@@ -4,468 +4,226 @@ const multer = require('multer');
 const upload = multer({ dest: 'data/' });
 const router = express.Router();
 const validate = require('../utils/validate');
+const reSend = require('../utils/reSend');
 
 module.exports = (db) => {
   const teacherManager = require('../models/teacherModel')(db);
   const generalManager = require('../models/generalModel')(db);
 
-  router.all('*', (req, res, next) => {
-		if (req.session.loginUser) {
-			next();
-		} else {
-			res.send({
-        stats: 0,
-        data: {
-          error: '未登录'
-        }
-      });
-		}
+  router.all('*', async (req, res, next) => {
+		try {
+      if (req.session.loginUser) {
+  			next();
+  		} else {
+        throw '未登录';
+  		}
+    } catch(error) {
+      reSend.error(res, error);
+    }
 	});
 
-  router.post('/addClass', (req, res, next) => {
-    const { classId, name, teacherName, password, message } = req.body;
+  router.post('/addClass', async (req, res, next) => {
+    try {
+      const { classId, name, teacherName, password, message } = req.body;
 
-    if (!validate.validClassId(classId) || !validate.validClassName(name) ||
-      !validate.validClassPass(password)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '填写的信息有误'
-        }
-      });
-      return;
-    }
+      if (!validate.validClassId(classId) || !validate.validClassName(name) ||
+        !validate.validClassPass(password)) {
+        throw '填写的信息有误';
+      }
 
-    teacherManager.insertClass(classId, name, teacherName, password, message).then(() => {
+      await teacherManager.insertClass(classId, name, teacherName, password, message);
       const classIds = ([classId]).concat(req.session.loginUser.classIds);
-      generalManager.updateUserClassIds(req.session.loginUser._id, classIds).then(() => {
-        req.session.loginUser.classIds = classIds;
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      }).catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '创建失败'
-          }
-        });
-      });
-    }).catch((error) => {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '创建失败'
-        }
-      });
-    });
+      await generalManager.updateUserClassIds(req.session.loginUser._id, classIds);
+      req.session.loginUser.classIds = classIds;
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
-  router.put('/editClass/:classId', (req, res, next) => {
-    const { classId } = req.params;
-    const { name, teacherName, password, message } = req.body;
+  router.put('/editClass/:classId', async (req, res, next) => {
+    try {
+      const { classId } = req.params;
+      const { name, teacherName, password, message } = req.body;
 
-    if (!validate.validClassName(name) || !validate.validClassPass(password)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '填写的信息有误'
-        }
-      });
-      return;
+      if (!validate.validClassName(name) || !validate.validClassPass(password)) {
+        throw '填写的信息有误';
+      }
+
+      await teacherManager.updateClassMsg(classId, name, teacherName, password, message);
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
     }
-
-    teacherManager.updateClassMsg(classId, name, teacherName, password, message)
-      .then(() => {
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      })
-      .catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '修改失败'
-          }
-        });
-      });
   });
 
-  router.post('/checkClassIdUnique', (req, res, next) => {
-    const { classId } = req.body;
-    teacherManager.checkClassIdUnique(classId).then(() => {
-      res.send({
-        stats: 1,
-        data: {}
-      });
-    }).catch((error) => {
-      res.send({
-        stats: 0,
-        data: {
-          error: '此Id已存在'
-        }
-      });
-    });
+  router.post('/checkClassIdUnique', async (req, res, next) => {
+    try {
+      const { classId } = req.body;
+
+      await teacherManager.checkClassIdUnique(classId);
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
-  router.post('/addHw/:classId', upload.array('files', 10), (req, res, next) => {
-    const classId = req.params.classId;
-    const { beginDate, endDate, title, description } = req.body;
+  router.post('/addHw/:classId', upload.array('files', 10), async (req, res, next) => {
+    try {
+      const classId = req.params.classId;
+      const { beginDate, endDate, title, description } = req.body;
 
-    if (!validate.validHwTitle(title)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '填写的信息有误'
-        }
-      });
-      return;
+      if (!validate.validHwTitle(title)) throw '填写的信息有误';
+      if (beginDate && endDate && +beginDate > +endDate) throw '时间区间错误';
+
+      const files = req.files.map((item) => ({
+        name: item.originalname,
+        filename: item.filename
+      }));
+      await teacherManager.updateClassHws(classId, Date.now() + '',
+        beginDate, endDate, title, description, files);
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
     }
-
-    const files = req.files.map((item) => ({
-      name: item.originalname,
-      filename: item.filename
-    }));
-    if (beginDate && endDate && +beginDate > +endDate) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '时间区间错误'
-        }
-      });
-      return;
-    }
-
-    teacherManager.updateClassHws(classId, Date.now() + '', beginDate, endDate, title, description, files)
-      .then(() => {
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      })
-      .catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '创建失败'
-          }
-        });
-      });
   });
 
   router.put('/editHw/:classId/:createDate',
-    upload.array('files', 10), (req, res, next) => {
+    upload.array('files', 10), async (req, res, next) => {
     try {
       const { classId, createDate } = req.params;
       const { beginDate, endDate, title, description, existFiles } = req.body;
 
-      if (!validate.validHwTitle(title)) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '填写的信息有误'
-          }
-        });
-        return;
-      }
+      if (!validate.validHwTitle(title)) throw '填写的信息有误';
+      if (beginDate && endDate && +beginDate > +endDate) throw '时间区间错误';
 
       const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
         name: item.originalname,
         filename: item.filename
       })));
-      if (beginDate && endDate && +beginDate > +endDate) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '时间区间错误'
-          }
-        });
-        return;
-      }
-
-      teacherManager.updateHomework(classId, createDate, beginDate, endDate, title, description, files)
-        .then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        })
-        .catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '修改失败'
-            }
-          });
-        });
+      await teacherManager.updateHomework(classId, createDate, beginDate,
+        endDate, title, description, files);
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '修改失败'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 
-  router.put('/feedbackHw/:classId/:createDate/:userId', (req, res, next) => {
-    const { classId, createDate, userId } = req.params;
-    const { feedback } = req.body;
-    teacherManager.updateSubFeedback(classId, createDate, userId, feedback)
-      .then(() => {
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      })
-      .catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '提交失败'
-          }
-        });
-      });
+  router.put('/feedbackHw/:classId/:createDate/:userId', async (req, res, next) => {
+    try {
+      const { classId, createDate, userId } = req.params;
+      const { feedback } = req.body;
+
+      await teacherManager.updateSubFeedback(classId, createDate, userId, feedback);
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
-  router.post('/uploadCourseware/:classId', upload.array('files', 10), (req, res, next) => {
-    const { classId } = req.params;
-    const { title, existFiles } = req.body;
-    const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
-      name: item.originalname,
-      filename: item.filename
-    })));
-    teacherManager.uploadClassCourseware(classId, title, Date.now() + '', files)
-      .then(() => {
-        res.send({
-          stats: 1,
-          data: {}
-        });
-      })
-      .catch((error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '上传失败'
-          }
-        });
-      });
+  router.post('/uploadCourseware/:classId',
+    upload.array('files', 10), async (req, res, next) => {
+    try {
+      const { classId } = req.params;
+      const { title, existFiles } = req.body;
+
+      const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
+        name: item.originalname,
+        filename: item.filename
+      })));
+      await teacherManager.uploadClassCourseware(classId, title, Date.now() + '', files);
+      reSend.success(res, {});
+    } catch(error) {
+      reSend.error(res, error);
+    }
   });
 
   router.put('/updateCourseware/:classId/:uploadDate',
-    upload.array('files', 10), (req, res, next) => {
+    upload.array('files', 10), async (req, res, next) => {
     try {
       const { classId, uploadDate } = req.params;
       const { title, existFiles } = req.body;
+
       const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
         name: item.originalname,
         filename: item.filename
       })));
-      teacherManager.updateCourseware(classId, title, uploadDate, files)
-        .then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        })
-        .catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '上传失败'
-            }
-          });
-        });
+      await teacherManager.updateCourseware(classId, title, uploadDate, files);
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '上传失败'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 
-  router.put('/deleteCourseware/:classId/:uploadDate', (req, res, next) => {
+  router.put('/deleteCourseware/:classId/:uploadDate', async (req, res, next) => {
     try {
       const { classId, uploadDate } = req.params;
-      teacherManager.deleteCourseware(classId, uploadDate)
-        .then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        })
-        .catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '删除失败'
-            }
-          });
-        });
+
+      await teacherManager.deleteCourseware(classId, uploadDate);
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '删除失败'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 
   router.post('/uploadHwAnswer/:classId/:createDate',
-    upload.array('files', 10), (req, res, next) => {
+    upload.array('files', 10), async (req, res, next) => {
     try {
       const { classId, createDate } = req.params;
       const { answer, existFiles } = req.body;
+
       const files = JSON.parse(existFiles).concat(req.files.map((item) => ({
         name: item.originalname,
         filename: item.filename
       })));
-      teacherManager.uploadHwAnswer(classId, createDate, answer, files)
-        .then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        })
-        .catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '上传失败'
-            }
-          });
-        });
+      await teacherManager.uploadHwAnswer(classId, createDate, answer, files);
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '上传失败'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 
-  router.put('/deleteHwAnswer/:classId/:createDate', (req, res, next) => {
+  router.put('/deleteHwAnswer/:classId/:createDate', async (req, res, next) => {
     try {
       const { classId, createDate } = req.params;
-      teacherManager.deleteHwAnswer(classId, createDate)
-        .then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        })
-        .catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '删除失败'
-            }
-          });
-        });
+
+      await teacherManager.deleteHwAnswer(classId, createDate);
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '删除失败'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 
-  router.get('/getStuSubs', (req, res, next) => {
-    const { classId, userId } = req.query;
-    const classIds = req.session.loginUser.classIds;
-    if (!classIds.includes(classId)) {
-      res.send({
-        stats: 0,
-        data: {
-          error: '权限不足'
-        }
-      });
-    } else {
-      teacherManager.findStuSubs(
+  router.get('/getStuSubs', async (req, res, next) => {
+    try {
+      const { classId, userId } = req.query;
+      const classIds = req.session.loginUser.classIds;
+
+      if (!classIds.includes(classId)) throw '权限不足';
+
+      const result = await eacherManager.findStuSubs(
         classId,
         userId
-      ).then((result) => {
-        res.send({
-          stats: 1,
-          data: {
-            subs: result
-          }
-        });
-      }, (error) => {
-        debug(error);
-        res.send({
-          stats: 0,
-          data: {
-            error: '获取数据失败'
-          }
-        });
+      );
+      reSend.success(res, {
+        subs: result
       });
+    } catch(error) {
+      reSend.error(res, error);
     }
   });
 
-  router.put('/updateClassTas/:classId', (req, res, next) => {
+  router.put('/updateClassTas/:classId', async (req, res, next) => {
     try {
       const { classId } = req.params;
       const { tas } = req.body;
 
-      if (!validate.isArray(tas)) {
-        res.send({
-          stats: 0,
-          data: {
-            error: '错误'
-          }
-        });
-        return;
-      }
+      if (!validate.isArray(tas)) throw '数据错误';
 
-      teacherManager.updateClassTas(classId, tas)
-        .then(() => {
-          res.send({
-            stats: 1,
-            data: {}
-          });
-        })
-        .catch((error) => {
-          debug(error);
-          res.send({
-            stats: 0,
-            data: {
-              error: '提交失败'
-            }
-          });
-        });
+      await teacherManager.updateClassTas(classId, tas);
+      reSend.success(res, {});
     } catch(error) {
-      debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '服务器出错'
-        }
-      });
+      reSend.error(res, error);
     }
   });
 
