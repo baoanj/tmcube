@@ -10,11 +10,11 @@ module.exports = (to, subject, text) =>
       from: '高校教学管理系统<tmcu@baoanj.xyz>',
       to,
       subject,
-      text
+      text,
     }).then(() => {
       resolve();
     }).catch((error) => {
       debug(error);
-      reject('邮件发送失败');
+      reject('邮件发送失败'); // eslint-disable-line
     });
   });

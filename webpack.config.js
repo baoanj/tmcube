@@ -1,11 +1,11 @@
 const path = require('path');
 
 module.exports = {
-  entry: "./main.js",
+  entry: './main.js',
   target: 'node',
   output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "bundle.js"
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'bundle.js',
   },
   module: {
     rules: [
@@ -15,11 +15,11 @@ module.exports = {
           {
             loader: 'file-loader',
             options: {
-              name: '[path][name].[ext]'
-            }
-          }
-        ]
-      }
-    ]
-  }
+              name: '[path][name].[ext]',
+            },
+          },
+        ],
+      },
+    ],
+  },
 };

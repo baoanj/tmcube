@@ -5,22 +5,22 @@ module.exports = {
       data,
     });
   },
-  error(res, error) {
+  error(res, debug, error) {
     if (typeof error === 'string') {
       res.send({
         stats: 0,
         data: {
-          error
-        }
+          error,
+        },
       });
     } else {
       debug(error);
       res.send({
         stats: 0,
         data: {
-          error: '服务器错误'
-        }
+          error: '服务器错误',
+        },
       });
     }
-  }
-}
+  },
+};

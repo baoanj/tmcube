@@ -4,6 +4,6 @@ module.exports = {
   secure: true,
   auth: {
     user: 'xxxxxx@xxx.xxx',
-    pass: 'xxxxxx'
-  }
+    pass: 'xxxxxx',
+  },
 };

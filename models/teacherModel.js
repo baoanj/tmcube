@@ -1,10 +1,7 @@
-const ObjectID = require('mongodb').ObjectID;
-const debug = require('debug')('tmcube:teacher:model');
 const fileSystem = require('./fileSystem');
 
 module.exports = (db) => {
   const collection = db.collection('classes');
-  const collection2 = db.collection('users');
 
   return {
     insertClass(classId, name, teacherName, password, message) {
@@ -18,9 +15,9 @@ module.exports = (db) => {
           homeworks: [],
           userIds: [],
           coursewares: [],
-          tas: []
+          tas: [],
         }).then(() => {
-          resolve()
+          resolve();
         }).catch((error) => {
           reject(error);
         });
@@ -31,7 +28,11 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.updateOne(
           { classId },
-          { $set: { name, teacherName, password, message } }
+          {
+            $set: {
+              name, teacherName, password, message,
+            },
+          },
         ).then(() => {
           resolve();
         }).catch((error) => {
@@ -43,7 +44,7 @@ module.exports = (db) => {
     checkClassIdUnique(classId) {
       return new Promise((resolve, reject) => {
         collection.findOne({ classId }).then((doc) => {
-        	if (doc) reject('此Id已存在');
+        	if (doc) reject('此Id已存在'); // eslint-disable-line
           else resolve();
         }).catch((error) => {
           reject(error);
@@ -55,20 +56,24 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.updateOne(
           { classId },
-          { $push: { homeworks: {
-            createDate,
-            beginDate,
-            endDate,
-            title,
-            description,
-            files,
-            submissions: [],
-            hwAnswer: {
-              answer: '',
-              files: []
+          {
+            $push: {
+              homeworks: {
+                createDate,
+                beginDate,
+                endDate,
+                title,
+                description,
+                files,
+                submissions: [],
+                hwAnswer: {
+                  answer: '',
+                  files: [],
+                },
+                drafts: {},
+              },
             },
-            drafts: {}
-          } } }
+          },
         ).then(() => {
           resolve();
         }).catch((error) => {
@@ -86,17 +91,19 @@ module.exports = (db) => {
           await fileSystem.deleteFiles(delFiles);
           await collection.updateOne(
             { classId },
-            { $set: {
-              'homeworks.$[hw].beginDate': beginDate,
-              'homeworks.$[hw].endDate': endDate,
-              'homeworks.$[hw].title': title,
-              'homeworks.$[hw].description': description,
-              'homeworks.$[hw].files': files
-            } },
-            { arrayFilters: [ { 'hw.createDate': createDate } ] }
+            {
+              $set: {
+                'homeworks.$[hw].beginDate': beginDate,
+                'homeworks.$[hw].endDate': endDate,
+                'homeworks.$[hw].title': title,
+                'homeworks.$[hw].description': description,
+                'homeworks.$[hw].files': files,
+              },
+            },
+            { arrayFilters: [{ 'hw.createDate': createDate }] },
           );
           resolve();
-        } catch(error) {
+        } catch (error) {
           reject(error);
         }
       });
@@ -106,11 +113,13 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.updateOne(
           { classId },
-          { $set: {
-            'homeworks.$[hw].submissions.$[sub].feedback': feedback,
-            'homeworks.$[hw].submissions.$[sub].checked': true
-          } },
-          { arrayFilters: [ { 'hw.createDate': createDate }, { 'sub.userId': userId } ] }
+          {
+            $set: {
+              'homeworks.$[hw].submissions.$[sub].feedback': feedback,
+              'homeworks.$[hw].submissions.$[sub].checked': true,
+            },
+          },
+          { arrayFilters: [{ 'hw.createDate': createDate }, { 'sub.userId': userId }] },
         ).then(() => {
           resolve();
         }).catch((error) => {
@@ -123,11 +132,15 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.updateOne(
           { classId },
-          { $push: { coursewares: {
-            title,
-            uploadDate,
-            files,
-          } } }
+          {
+            $push: {
+              coursewares: {
+                title,
+                uploadDate,
+                files,
+              },
+            },
+          },
         ).then(() => {
           resolve();
         }).catch((error) => {
@@ -145,14 +158,16 @@ module.exports = (db) => {
           await fileSystem.deleteFiles(delFiles);
           await collection.updateOne(
             { classId },
-            { $set: {
-              'coursewares.$[cw].title': title,
-              'coursewares.$[cw].files': files
-            } },
-            { arrayFilters: [ { 'cw.uploadDate': uploadDate } ] }
+            {
+              $set: {
+                'coursewares.$[cw].title': title,
+                'coursewares.$[cw].files': files,
+              },
+            },
+            { arrayFilters: [{ 'cw.uploadDate': uploadDate }] },
           );
           resolve();
-        } catch(error) {
+        } catch (error) {
           reject(error);
         }
       });
@@ -163,14 +178,14 @@ module.exports = (db) => {
         try {
           const doc = await collection.findOne({ classId });
           const courseware = doc.coursewares.find(item => item.uploadDate === uploadDate);
-          const files = courseware.files;
+          const { files } = courseware;
           await fileSystem.deleteFiles(files);
           await collection.updateOne(
             { classId },
-            { $pull: { coursewares: { uploadDate } } }
+            { $pull: { coursewares: { uploadDate } } },
           );
           resolve();
-        } catch(error) {
+        } catch (error) {
           reject(error);
         }
       });
@@ -185,14 +200,18 @@ module.exports = (db) => {
           await fileSystem.deleteFiles(delFiles);
           await collection.updateOne(
             { classId },
-            { $set: { 'homeworks.$[hw].hwAnswer': {
-              answer,
-              files
-            } } },
-            { arrayFilters: [ { 'hw.createDate': createDate } ] }
+            {
+              $set: {
+                'homeworks.$[hw].hwAnswer': {
+                  answer,
+                  files,
+                },
+              },
+            },
+            { arrayFilters: [{ 'hw.createDate': createDate }] },
           );
           resolve();
-        } catch(error) {
+        } catch (error) {
           reject(error);
         }
       });
@@ -202,15 +221,19 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.findOne({ classId }).then((doc) => {
           const homework = doc.homeworks.find(item => item.createDate === createDate);
-          const files = homework.hwAnswer.files;
+          const { files } = homework.hwAnswer;
           fileSystem.deleteFiles(files).then(() => {
             collection.updateOne(
               { classId },
-              { $set: { 'homeworks.$[hw].hwAnswer': {
-                answer: '',
-                files: []
-              } } },
-              { arrayFilters: [ { 'hw.createDate': createDate } ] }
+              {
+                $set: {
+                  'homeworks.$[hw].hwAnswer': {
+                    answer: '',
+                    files: [],
+                  },
+                },
+              },
+              { arrayFilters: [{ 'hw.createDate': createDate }] },
             ).then(() => {
               resolve();
             });
@@ -224,10 +247,10 @@ module.exports = (db) => {
     findStuSubs(classId, userId) {
       return new Promise((resolve, reject) => {
         collection.findOne({ classId }).then((doc) => {
-        	const result = [];
-          for (let i = 0; i < doc.homeworks.length; i++) {
+          const result = [];
+          for (let i = 0; i < doc.homeworks.length; i += 1) {
             let j;
-            for (j = 0; j < doc.homeworks[i].submissions.length; j++) {
+            for (j = 0; j < doc.homeworks[i].submissions.length; j += 1) {
               if (doc.homeworks[i].submissions[j].userId === userId) {
                 result.push({
                   commit: true,
@@ -236,7 +259,7 @@ module.exports = (db) => {
                   feedback: doc.homeworks[i].submissions[j].feedback,
                   answer: doc.homeworks[i].submissions[j].answer,
                   files: doc.homeworks[i].submissions[j].files,
-                  hwTitle: doc.homeworks[i].title
+                  hwTitle: doc.homeworks[i].title,
                 });
                 break;
               }
@@ -244,7 +267,7 @@ module.exports = (db) => {
             if (j === doc.homeworks[i].submissions.length) {
               result.push({
                 commit: false,
-                hwTitle: doc.homeworks[i].title
+                hwTitle: doc.homeworks[i].title,
               });
             }
           }
@@ -259,13 +282,13 @@ module.exports = (db) => {
       return new Promise((resolve, reject) => {
         collection.updateOne(
           { classId },
-          { $set: { tas } }
+          { $set: { tas } },
         ).then(() => {
           resolve();
         }).catch((error) => {
           reject(error);
         });
       });
-    }
+    },
   };
 };

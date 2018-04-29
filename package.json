@@ -4,8 +4,15 @@
   "private": true,
   "scripts": {
     "build": "SET NODE_ENV=production & webpack --config webpack.config.js",
-    "start": "SET NODE_ENV=development & SET DEBUG=tmcube:* & nodemon ./main.js"
+    "start": "SET NODE_ENV=development & SET DEBUG=tmcube:* & nodemon ./main.js",
+    "lint": "npm run lint:js && npm run lint:css",
+    "eslint": "eslint --ignore-path .gitignore --ignore-pattern utils/svg-captcha ./",
+    "lint:staged": "lint-staged"
   },
+  "lint-staged": {
+    "*.js": "eslint"
+  },
+  "pre-commit": "lint:staged",
   "dependencies": {
     "connect-mongo": "^2.0.1",
     "cookie-parser": "^1.4.3",
@@ -20,8 +27,13 @@
     "opentype.js": "^0.8.0"
   },
   "devDependencies": {
+    "eslint": "^4.9.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.7.0",
     "file-loader": "^1.1.11",
+    "lint-staged": "^7.0.5",
     "nodemon": "^1.17.3",
+    "pre-commit": "^1.2.2",
     "webpack": "^3.6.0"
   }
 }
