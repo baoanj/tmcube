@@ -3,7 +3,12 @@ const debug = require('debug')('tmcube:student');
 const multer = require('multer');
 const reSend = require('../utils/reSend');
 
-const upload = multer({ dest: 'data/' });
+const upload = multer({
+  dest: 'data/',
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+});
 const router = express.Router();
 
 module.exports = (db) => {

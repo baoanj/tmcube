@@ -245,15 +245,15 @@ module.exports = (db) => {
       });
     },
 
-    addValidateEmail(email) {
+    addActivateEmail(email) {
       return new Promise((resolve, reject) => {
         collection4.insert({
           email,
-        }).then(result => resolve(result), () => reject('激活邮件发送失败')); // eslint-disable-line
+        }).then(result => resolve(result), error => reject(error));
       });
     },
 
-    findValidateEmail(activateId) {
+    findActivateEmail(activateId) {
       return new Promise((resolve, reject) => {
         collection4.findOne({ _id: ObjectID(activateId) })
           .then((doc) => {
@@ -265,7 +265,7 @@ module.exports = (db) => {
       });
     },
 
-    findValidateId(email) {
+    findActivateId(email) {
       return new Promise((resolve, reject) => {
         collection4.findOne({ email })
           .then((doc) => {

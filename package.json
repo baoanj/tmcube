@@ -1,11 +1,12 @@
 {
   "name": "tmcube",
   "version": "0.0.0",
+  "description": "基于现代Web技术的高校教学管理系统后台项目",
+  "author": "baoanj <baoanj@live.com>",
   "private": true,
   "scripts": {
     "build": "SET NODE_ENV=production & webpack --config webpack.config.js",
     "start": "SET NODE_ENV=development & SET DEBUG=tmcube:* & nodemon ./main.js",
-    "lint": "npm run lint:js && npm run lint:css",
     "eslint": "eslint --ignore-path .gitignore --ignore-pattern utils/svg-captcha ./",
     "lint:staged": "lint-staged"
   },

@@ -23,8 +23,8 @@ module.exports = (db) => {
       }
 
       await generalManager.checkEmailNotExist(email);
+      const result = await generalManager.addActivateEmail(email);
       await generalManager.insertUser(name, stuId, email, password, role);
-      const result = await generalManager.addValidateEmail(email);
       await sendEmail(
         email,
         '【邮箱激活】高校教学管理系统',
@@ -40,7 +40,7 @@ module.exports = (db) => {
     try {
       const { email, host } = req.body;
 
-      const activateId = await generalManager.findValidateId(email);
+      const activateId = await generalManager.findActivateId(email);
       if (activateId === null) throw '无法激活'; // eslint-disable-line
       await sendEmail(
         email,
@@ -59,7 +59,7 @@ module.exports = (db) => {
 
       if (!validate.validUniqueId(activateId)) throw '无效链接'; // eslint-disable-line
 
-      const email = await generalManager.findValidateEmail(activateId);
+      const email = await generalManager.findActivateEmail(activateId);
       if (email === null) throw '无效链接'; // eslint-disable-line
       await generalManager.updateUserActivation(email);
       reSend.success(res, {});

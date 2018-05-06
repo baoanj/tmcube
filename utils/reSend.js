@@ -15,12 +15,7 @@ module.exports = {
       });
     } else {
       debug(error);
-      res.send({
-        stats: 0,
-        data: {
-          error: '服务器错误',
-        },
-      });
+      res.status(500).send();
     }
   },
 };

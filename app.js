@@ -1,7 +1,7 @@
-const createError = require('http-errors');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
+const debug = require('debug')('tmcube:app');
 const session = require('express-session');
 const MongoStore = require('connect-mongo')(session);
 
@@ -34,20 +34,15 @@ module.exports = (db) => {
   app.use('/api/teacher', teacherRouter);
   app.use('/api/student', studentRouter);
 
-  // catch 404 and forward to error handler
-  app.use((req, res, next) => {
-    next(createError(404));
+  // catch multer error
+  app.use((err, req, res, next) => {
+    debug(err);
+    next();
   });
 
-  // error handler
-  app.use((err, req, res) => {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-    // render the error page
-    res.status(err.status || 500);
-    res.send('error');
+  // catch else routes and handle error
+  app.use((req, res) => {
+    res.status(400).send();
   });
 
   return app;
