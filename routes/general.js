@@ -28,7 +28,7 @@ module.exports = (db) => {
       await sendEmail(
         email,
         '【邮箱激活】高校教学管理系统',
-        `请复制此链接在浏览器窗口打开：${host}/activate/${result.ops[0]._id}`, // eslint-disable-line
+        `请复制此链接在浏览器窗口打开：https://${host}/activate/${result.ops[0]._id}`, // eslint-disable-line
       );
       reSend.success(res, {});
     } catch (error) {
@@ -45,7 +45,7 @@ module.exports = (db) => {
       await sendEmail(
         email,
         '【邮箱激活】高校教学管理系统',
-        `请复制此链接在浏览器窗口打开：${host}/activate/${activateId}`,
+        `请复制此链接在浏览器窗口打开：https://${host}/activate/${activateId}`,
       );
       reSend.success(res, {});
     } catch (error) {
@@ -133,7 +133,7 @@ module.exports = (db) => {
       await sendEmail(
         email,
         '【重置密码】高校教学管理系统',
-        `请复制此链接(10分钟内有效)在浏览器窗口打开：${host}/reset/${result.ops[0]._id}`, // eslint-disable-line
+        `请复制此链接(10分钟内有效)在浏览器窗口打开：https://${host}/reset/${result.ops[0]._id}`, // eslint-disable-line
       );
       reSend.success(res, {});
     } catch (error) {
